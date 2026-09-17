@@ -15,11 +15,15 @@ export async function getCurrentProfile(): Promise<{
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, full_name, role")
+    .select("id, full_name, role, status")
     .eq("id", user.id)
     .single();
 
-  if (!profile) return null;
+  if (!profile || profile.status !== "active") {
+    // Stale session (missing/suspended profile): clear it so /login isn't a dead loop.
+    await supabase.auth.signOut();
+    return null;
+  }
 
   return { id: profile.id, fullName: profile.full_name, role: profile.role as Role };
 }
