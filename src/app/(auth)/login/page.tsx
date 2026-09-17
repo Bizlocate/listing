@@ -1,11 +1,16 @@
 import { signIn } from "../actions";
 
+const ERROR_MESSAGES: Record<string, string> = {
+  invalid_credentials: "Invalid email or password.",
+};
+
 export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string; message?: string }>;
 }) {
   const { error, message } = await searchParams;
+  const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-white px-4">
@@ -15,7 +20,7 @@ export default async function LoginPage({
       >
         <h1 className="text-xl font-semibold text-slate-900">Log in</h1>
         {message ? <p className="text-sm text-sky-700">{message}</p> : null}
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
         <div className="space-y-1">
           <label className="text-sm text-slate-700" htmlFor="email">
             Email

@@ -1,11 +1,16 @@
 import { signUp } from "../actions";
 
+const ERROR_MESSAGES: Record<string, string> = {
+  signup_failed: "Could not create account. Please check your details and try again.",
+};
+
 export default async function SignupPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-white px-4">
@@ -14,7 +19,7 @@ export default async function SignupPage({
         className="w-full max-w-sm space-y-4 rounded-lg border border-sky-100 p-6 shadow-sm"
       >
         <h1 className="text-xl font-semibold text-slate-900">Create account</h1>
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
         <div className="space-y-1">
           <label className="text-sm text-slate-700" htmlFor="fullName">
             Full name
