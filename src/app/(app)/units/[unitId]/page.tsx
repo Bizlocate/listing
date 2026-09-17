@@ -2,10 +2,13 @@ import { redirect, notFound } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
 import { canSeeAllAreas, getAdminAreaIds } from "@/lib/auth/get-admin-area-ids";
-import { createUnitSpace } from "./actions";
+import { verificationStatusLabel, contactStatusLabel } from "@/lib/owners/status-labels";
+import { createUnitSpace, createOwnerForUnit } from "./actions";
 
 const ERROR_MESSAGES: Record<string, string> = {
   space_create_failed: "Could not add space. Check the details and try again.",
+  owner_create_failed: "Could not create owner. Check the details and try again.",
+  ownership_link_failed: "Owner was created but could not be linked to this unit.",
 };
 
 const FLOOR_TYPES = ["Ground", "Mezzanine", "1st", "2nd", "3rd", "Upper Floor", "Whole Building", "Custom"];
@@ -15,7 +18,7 @@ export default async function UnitDetailPage({
   searchParams,
 }: {
   params: Promise<{ unitId: string }>;
-  searchParams: Promise<{ error?: string; space_created?: string }>;
+  searchParams: Promise<{ error?: string; space_created?: string; owner_added?: string }>;
 }) {
   const profile = await getCurrentProfile();
   if (!profile) {
@@ -23,7 +26,7 @@ export default async function UnitDetailPage({
   }
 
   const { unitId } = await params;
-  const { error, space_created } = await searchParams;
+  const { error, space_created, owner_added } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
 
   const supabase = await createClient();
@@ -50,6 +53,17 @@ export default async function UnitDetailPage({
     .select("id, floor_type, floor_label, size, size_type, status")
     .eq("unit_id", unitId)
     .order("floor_label");
+
+  const ownerships = canManage
+    ? (
+        await supabase
+          .from("unit_ownerships")
+          .select(
+            "id, space_id, is_primary, owners(id, name, primary_contact, verification_status, contact_status)",
+          )
+          .eq("unit_id", unitId)
+      ).data
+    : null;
 
   return (
     <div className="space-y-6">
@@ -174,6 +188,136 @@ export default async function UnitDetailPage({
             Add space
           </button>
         </form>
+      ) : null}
+
+      {canManage ? (
+        <div className="space-y-4">
+          <h2 className="font-medium text-slate-900">Owners</h2>
+          {owner_added ? <p className="text-sm text-sky-700">Owner added.</p> : null}
+
+          <table className="w-full max-w-2xl text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-500">
+                <th className="py-2 pr-4">Name</th>
+                <th className="py-2 pr-4">Contact</th>
+                <th className="py-2 pr-4">Verification</th>
+                <th className="py-2 pr-4">Contact status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(ownerships ?? []).map((o) => (
+                <tr key={o.id} className="border-b border-slate-100">
+                  <td className="py-2 pr-4 text-sky-700">
+                    {/* @ts-expect-error -- Supabase nested select typing */}
+                    <a href={`/owners/${o.owners?.id}`}>{o.owners?.name}</a>
+                  </td>
+                  {/* @ts-expect-error -- Supabase nested select typing */}
+                  <td className="py-2 pr-4 text-slate-600">{o.owners?.primary_contact ?? "—"}</td>
+                  <td className="py-2 pr-4 text-slate-600">
+                    {/* @ts-expect-error -- Supabase nested select typing */}
+                    {verificationStatusLabel(o.owners?.verification_status)}
+                  </td>
+                  <td className="py-2 pr-4 text-slate-600">
+                    {/* @ts-expect-error -- Supabase nested select typing */}
+                    {contactStatusLabel(o.owners?.contact_status)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <form
+            action={createOwnerForUnit}
+            className="max-w-sm space-y-4 rounded-lg border border-sky-100 p-6 shadow-sm"
+          >
+            <input type="hidden" name="unitId" value={unit.id} />
+            <h3 className="font-medium text-slate-900">Add owner</h3>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-700" htmlFor="spaceId">
+                Space (leave blank for whole unit)
+              </label>
+              <select
+                id="spaceId"
+                name="spaceId"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
+              >
+                <option value="">Whole unit</option>
+                {(spaces ?? []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.floor_label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-700" htmlFor="name">
+                Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                required
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-700" htmlFor="primaryContact">
+                Primary contact
+              </label>
+              <input
+                id="primaryContact"
+                name="primaryContact"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-700" htmlFor="otherContact">
+                Other contact
+              </label>
+              <input
+                id="otherContact"
+                name="otherContact"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-700" htmlFor="icOrCompanyNo">
+                IC / Company No
+              </label>
+              <input
+                id="icOrCompanyNo"
+                name="icOrCompanyNo"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-700" htmlFor="ownerType">
+                Owner type
+              </label>
+              <input
+                id="ownerType"
+                name="ownerType"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-700" htmlFor="remarks">
+                Remarks
+              </label>
+              <textarea
+                id="remarks"
+                name="remarks"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full rounded-md bg-sky-600 px-4 py-2 text-base font-medium text-white hover:bg-sky-700"
+            >
+              Add owner
+            </button>
+          </form>
+        </div>
       ) : null}
     </div>
   );
