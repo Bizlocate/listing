@@ -37,3 +37,25 @@ export async function createSubArea(formData: FormData) {
 
   redirect(`/admin/areas/${areaId}?created=1`);
 }
+
+export async function assignAreaAdmin(formData: FormData) {
+  const actor = await getCurrentProfile();
+  if (!actor || actor.role !== "super_admin") {
+    redirect("/");
+  }
+
+  const areaId = String(formData.get("areaId"));
+  const profileId = String(formData.get("profileId"));
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("area_admins")
+    .insert({ area_id: areaId, profile_id: profileId });
+
+  if (error) {
+    const errorParam = error.code === "23505" ? "already_assigned" : "assign_failed";
+    redirect(`/admin/areas/${areaId}?error=${errorParam}`);
+  }
+
+  redirect(`/admin/areas/${areaId}?assigned=1`);
+}
