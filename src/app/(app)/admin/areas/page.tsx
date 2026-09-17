@@ -5,6 +5,7 @@ import { createArea } from "./actions";
 
 const ERROR_MESSAGES: Record<string, string> = {
   duplicate_code: "That area code is already in use.",
+  duplicate_name: "That area name is already in use.",
   create_failed: "Could not create area. Check the details and try again.",
 };
 

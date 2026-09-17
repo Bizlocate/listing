@@ -17,7 +17,11 @@ export async function createArea(formData: FormData) {
   const { error } = await supabase.from("areas").insert({ name, code });
 
   if (error) {
-    redirect(`/admin/areas?error=${error.code === "23505" ? "duplicate_code" : "create_failed"}`);
+    let errorParam = "create_failed";
+    if (error.code === "23505") {
+      errorParam = error.message.includes("code") ? "duplicate_code" : "duplicate_name";
+    }
+    redirect(`/admin/areas?error=${errorParam}`);
   }
 
   redirect("/admin/areas?created=1");

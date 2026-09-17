@@ -5,6 +5,7 @@ import { createSubArea } from "./actions";
 
 const ERROR_MESSAGES: Record<string, string> = {
   duplicate_code: "That sub-area code is already in use for this area.",
+  duplicate_name: "That sub-area name is already in use for this area.",
   create_failed: "Could not create sub-area. Check the details and try again.",
 };
 

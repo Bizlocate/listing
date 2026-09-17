@@ -28,9 +28,11 @@ export async function createSubArea(formData: FormData) {
   });
 
   if (error) {
-    redirect(
-      `/admin/areas/${areaId}?error=${error.code === "23505" ? "duplicate_code" : "create_failed"}`,
-    );
+    let errorParam = "create_failed";
+    if (error.code === "23505") {
+      errorParam = error.message.includes("code") ? "duplicate_code" : "duplicate_name";
+    }
+    redirect(`/admin/areas/${areaId}?error=${errorParam}`);
   }
 
   redirect(`/admin/areas/${areaId}?created=1`);
