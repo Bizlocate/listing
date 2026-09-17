@@ -8,7 +8,7 @@ import { createUnitSpace, createOwnerForUnit } from "./actions";
 const ERROR_MESSAGES: Record<string, string> = {
   space_create_failed: "Could not add space. Check the details and try again.",
   owner_create_failed: "Could not create owner. Check the details and try again.",
-  ownership_link_failed: "Owner was created but could not be linked to this unit.",
+  ownership_link_failed: "Could not link owner to this unit. The owner record was not saved.",
 };
 
 const FLOOR_TYPES = ["Ground", "Mezzanine", "1st", "2nd", "3rd", "Upper Floor", "Whole Building", "Custom"];
@@ -59,7 +59,7 @@ export default async function UnitDetailPage({
         await supabase
           .from("unit_ownerships")
           .select(
-            "id, space_id, is_primary, owners(id, name, primary_contact, verification_status, contact_status)",
+            "id, space_id, is_primary, unit_spaces(floor_label), owners(id, name, primary_contact, verification_status, contact_status)",
           )
           .eq("unit_id", unitId)
       ).data
@@ -199,6 +199,7 @@ export default async function UnitDetailPage({
             <thead>
               <tr className="border-b border-slate-200 text-slate-500">
                 <th className="py-2 pr-4">Name</th>
+                <th className="py-2 pr-4">Space</th>
                 <th className="py-2 pr-4">Contact</th>
                 <th className="py-2 pr-4">Verification</th>
                 <th className="py-2 pr-4">Contact status</th>
@@ -210,6 +211,10 @@ export default async function UnitDetailPage({
                   <td className="py-2 pr-4 text-sky-700">
                     {/* @ts-expect-error -- Supabase nested select typing */}
                     <a href={`/owners/${o.owners?.id}`}>{o.owners?.name}</a>
+                  </td>
+                  <td className="py-2 pr-4 text-slate-600">
+                    {/* @ts-expect-error -- Supabase nested select typing */}
+                    {o.unit_spaces?.floor_label ?? "Whole unit"}
                   </td>
                   {/* @ts-expect-error -- Supabase nested select typing */}
                   <td className="py-2 pr-4 text-slate-600">{o.owners?.primary_contact ?? "—"}</td>

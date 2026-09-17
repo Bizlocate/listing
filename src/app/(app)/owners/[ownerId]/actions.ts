@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
+import { todayInMalaysia } from "@/lib/owners/today-my";
 
 export async function updateOwner(formData: FormData) {
   const actor = await getCurrentProfile();
@@ -22,7 +23,7 @@ export async function updateOwner(formData: FormData) {
   };
 
   if (verificationStatus === "verified_owner") {
-    update.last_verified_date = new Date().toISOString().slice(0, 10);
+    update.last_verified_date = todayInMalaysia();
   }
 
   const supabase = await createClient();

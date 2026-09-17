@@ -73,6 +73,7 @@ export async function createOwnerForUnit(formData: FormData) {
   });
 
   if (ownershipError) {
+    await supabase.from("owners").delete().eq("id", owner!.id);
     redirect(`/units/${unitId}?error=ownership_link_failed`);
   }
 
