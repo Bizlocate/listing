@@ -4,17 +4,29 @@ export default async function HomePage() {
   const profile = await getCurrentProfile();
 
   return (
-    <div>
+    <div className="space-y-2">
       <h1 className="text-lg font-semibold text-slate-900">Welcome to Bizlocate</h1>
-      <p className="mt-2 text-slate-600">
-        Signed in successfully. Feature pages (Units, Owners, Listings) land in
-        later plans.
+      <p className="text-slate-600">
+        Signed in successfully. Feature pages (Owners, Listings) land in later
+        plans.
       </p>
-      {profile?.role === "super_admin" ? (
-        <a href="/admin/users" className="mt-4 inline-block text-sky-600">
-          Manage users →
-        </a>
-      ) : null}
+      <div className="flex flex-col gap-1">
+        {profile?.role === "area_admin" || profile?.role === "super_admin" ? (
+          <a href="/units" className="text-sky-600">
+            Units →
+          </a>
+        ) : null}
+        {profile?.role === "super_admin" ? (
+          <a href="/admin/areas" className="text-sky-600">
+            Manage areas →
+          </a>
+        ) : null}
+        {profile?.role === "super_admin" ? (
+          <a href="/admin/users" className="text-sky-600">
+            Manage users →
+          </a>
+        ) : null}
+      </div>
     </div>
   );
 }
