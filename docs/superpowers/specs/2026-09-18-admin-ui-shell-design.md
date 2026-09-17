@@ -10,13 +10,21 @@ Source: a claude.ai/design mockup (`Bizlocate Mockups.dc.html`, Modernist
 design system, sky-blue/white theme, 15 screens covering the full admin +
 salesperson lifecycle) exported and reviewed against this codebase.
 
-Current codebase state: auth (login, roles, profiles) is built. `(app)/`
-has only a placeholder home page and a functional `admin/users` page
-(real Supabase data, no visual polish). The full Phase 1 DB schema
+**Revision note (2026-09-18):** this spec was originally written against
+an earlier snapshot of the codebase (auth + a placeholder home page +
+`admin/users` only). Between that snapshot and implementation, real
+Phase 1 work landed on `main`: functional `units`, `units/[unitId]`,
+`owners`, `owners/[ownerId]`, `admin/areas`, `admin/areas/[areaId]`
+pages, all with real Supabase queries, real create forms (server
+actions), and real role/area-scoped access checks (see
+`docs/superpowers/plans/2026-09-17-areas-and-units.md` and
+`2026-09-17-area-admin-assignment-and-owners.md`). The route table and
+scope below are corrected for that reality — the earlier draft would
+have replaced working functionality with mock-data stand-ins at the
+same paths, which is wrong. The full Phase 1 DB schema
 (`supabase/migrations/0001_phase1_schema.sql` through `0004_...sql`) is
-already migrated to a real Supabase project (`urexerwpcwbfhsyqdien
-.supabase.co`) with 43 RLS policies — but every table is empty and no
-admin/listing UI exists yet.
+migrated to a real Supabase project (`urexerwpcwbfhsyqdien
+.supabase.co`) with 43 RLS policies.
 
 This spec covers **Admin desktop screens only** (9 of the 15 mockup
 screens). Salesperson mobile screens (Browse, Submit unit, Request
@@ -57,18 +65,20 @@ navigation is replaced with real routing.
 
 ## Routes (all under `src/app/(app)/`)
 
-| Route | Mockup screen | Notes |
+| Route | Mockup screen | Treatment |
 |---|---|---|
-| `/` | Dashboard | Replaces current placeholder `page.tsx` |
-| `/units` | Units | Card grid, mock list |
-| `/units/[unitId]` | Unit detail | Tabs (Overview/Spaces/Owner/Timeline) as client component; 404 via `notFound()` for unknown id |
-| `/owner-search` | Owner search | List + right-side detail panel, single page, client-side selection state |
-| `/listings` | Listings | List |
-| `/listings/[listingId]` | Listing detail | Real id lookup, `notFound()` for unknown id |
-| `/listings/new` | New listing | Static form, submit is a no-op (no backend this round) |
-| `/contact-requests` | Contact requests | List + approval detail panel, same pattern as owner-search |
-| `/verification` | Verification | Card grid, no detail view (matches mockup) |
-| `/admin/users` | Users & areas | **Existing page kept as-is functionally** (real Supabase query, super_admin gate, create-user form) — only re-skinned to sit inside the new shell and use card/row visual style instead of a bare `<table>` |
+| `/` | Dashboard | **New content**, replaces current placeholder `page.tsx` — stat tiles, work queue, activity feed, mock data. Only rendered for `super_admin`/`area_admin`; `sp` keeps a minimal placeholder (sp home is next round's problem, not this one's) |
+| `/units` | Units | **Reskin only.** Same Supabase query, same data, same `+ New unit` link — table rows become the mockup's card grid |
+| `/units/[unitId]` | Unit detail | **Reskin only.** Same query, same `createUnitSpace`/`createOwnerForUnit` server actions, same area-scoped `canManage` check. Wrapped in mockup-style tabs: Overview / Spaces / Owner (client component for tab state). **No Timeline tab** — there's no `activities` query wired up anywhere in the app yet; not adding one here, that's its own future feature, not a UI-shell task |
+| `/owners`, `/owners/[ownerId]` | — | **Untouched.** Not one of the mockup's 9 screens (the mockup only shows owner info as a tab inside Unit detail, which links to this page already) |
+| `/admin/areas`, `/admin/areas/[areaId]` | — | **Untouched.** The mockup's "Users & areas" screen shows a lightweight area summary card, but real Areas already has its own richer sub-area management flow — not collapsing that into the Users page. Sidebar just links to it from the same nav group as Users |
+| `/owner-search` | Owner search | **New**, mock data. This is the `owner_search_tasks` call queue (need_search → number_found → contacting → confirmed) — genuinely unbuilt, no UI exists for this table yet. List + right-side detail panel, single page, client-side selection state |
+| `/listings` | Listings | **New**, mock data. No `listings` UI exists yet |
+| `/listings/[listingId]` | Listing detail | **New**, mock data. Real id lookup within the mock array, `notFound()` for unknown id |
+| `/listings/new` | New listing | **New**, mock data. Static form, submit is a no-op (no backend this round) |
+| `/contact-requests` | Contact requests | **New**, mock data. List + approval detail panel, same pattern as owner-search |
+| `/verification` | Verification | **New**, mock data. Card grid, no detail view (matches mockup) |
+| `/admin/users` | Users & areas | **Reskin only.** Same Supabase query, super_admin gate, `createUser` action — rows become cards/list style |
 
 Salesperson routes (`/browse`, `/submit`, `/contact`, `/outcome`) and the
 "Salesperson" nav group are **not** part of this round.
@@ -79,13 +89,13 @@ New `src/app/(app)/layout.tsx`:
 - Left sidebar, collapsible (`⟨` to hide / `☰` to reopen), client
   component for open/closed state (no persistence — resets on reload,
   matches mockup, not worth localStorage for a v1 shell).
-- Sidebar shows only the **Admin** nav group this round (Dashboard,
-  Units, Unit detail, Owner search, Listings, Listing detail, New
-  listing, Contact requests, Verification, Users & areas). "Unit detail"
-  and "Listing detail" are non-navigable in the mockup (they only appear
-  once you're on a specific record) — real version: the sidebar links
-  to the list pages only; detail pages are reached by clicking a
-  card/row, consistent with how real navigation should work.
+- Sidebar shows only the **Admin** nav group this round: Dashboard,
+  Units, Owner search, Listings, Contact requests, Verification, Areas,
+  Users. Detail pages (Unit detail, Listing detail) aren't separate nav
+  items — reached by clicking a card/row, consistent with how real
+  navigation should work. "Areas" and "Users" are two separate real
+  pages (both untouched/reskinned respectively, see routes table) linked
+  from the same nav group, not merged into one page.
 - Top bar: search input (visual only, non-functional this round),
   area text, avatar + real `profile.fullName` / `roleLabel(profile.role)`
   (already available via `getCurrentProfile()`).
@@ -94,13 +104,18 @@ New `src/app/(app)/layout.tsx`:
 
 ## Mock data
 
-`src/lib/mock/` — one file per entity (`units.ts`, `listings.ts`,
-`owner-search.ts`, `contact-requests.ts`, `verification.ts`), plain
-exported arrays/objects, field names matching the real schema columns.
-Content is the same sample Setapak/Wangsa Maju shoplot data as the
-mockup. No shared "mock DB" abstraction, no fake query layer — just
-arrays and `.find()`, since this is throwaway-by-design (replaced by
-real Supabase calls in a later round, not extended).
+`src/lib/mock/` — one file per entity needed by the genuinely-new
+screens only (`listings.ts`, `owner-search.ts`, `contact-requests.ts`,
+`verification.ts` — Dashboard's work-queue/activity feed pulls from
+these same files rather than a 5th file). Plain exported arrays/objects,
+field names matching the real schema columns (`listings.listing_status`,
+`contact_requests.reason` enum values, etc.) from
+`2026-09-17-bizlocate-core-design.md` §2. Content is the same sample
+Setapak/Wangsa Maju shoplot data as the mockup. No shared "mock DB"
+abstraction, no fake query layer — just arrays and `.find()`, since this
+is throwaway-by-design (replaced by real Supabase calls in a later
+round, not extended). Units/Owners/Areas/Users pages keep using their
+existing real Supabase queries — no mock data involved there.
 
 ## Out of scope (explicitly deferred)
 
