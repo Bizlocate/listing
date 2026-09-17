@@ -7,9 +7,9 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; message?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const { error, message } = await searchParams;
+  const { error } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
 
   return (
@@ -19,7 +19,6 @@ export default async function LoginPage({
         className="w-full max-w-sm space-y-4 rounded-lg border border-sky-100 p-6 shadow-sm"
       >
         <h1 className="text-xl font-semibold text-slate-900">Log in</h1>
-        {message ? <p className="text-sm text-sky-700">{message}</p> : null}
         {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
         <div className="space-y-1">
           <label className="text-sm text-slate-700" htmlFor="email">
@@ -51,9 +50,6 @@ export default async function LoginPage({
         >
           Log in
         </button>
-        <p className="text-sm text-slate-600">
-          No account? <a className="text-sky-600" href="/signup">Sign up</a>
-        </p>
       </form>
     </main>
   );
