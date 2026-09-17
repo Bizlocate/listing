@@ -66,6 +66,12 @@ export default async function NewUnitPage({
               </option>
             ))}
           </select>
+          {!canSeeAllAreas(profile.role) && (subAreas ?? []).length === 0 ? (
+            <p className="text-sm text-sky-700">
+              No sub-areas are available in your assigned areas. Ask a Super Admin to
+              assign you an area.
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-1">
