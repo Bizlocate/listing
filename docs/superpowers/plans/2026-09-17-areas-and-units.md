@@ -59,7 +59,7 @@ Because RLS already scopes writes correctly, this plan's Server Actions do a rol
 **Interfaces:**
 - Produces: `export function canSeeAllAreas(role: Role): boolean` — pure, `true` only for `"super_admin"`.
 
-This task is split into a pure, testable piece (`canSeeAllAreas`) and a DB-touching piece (the actual area-id lookup) that's exercised live in Task 4, matching the pattern from the Auth plan (`get-current-profile.ts` had no isolated unit test either — same reasoning applies here).
+This task is split into a pure, testable piece (`canSeeAllAreas`) and a DB-touching piece (the actual area-id lookup) that's exercised live in Task 5, matching the pattern from the Auth plan (`get-current-profile.ts` had no isolated unit test either — same reasoning applies here).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -509,7 +509,7 @@ git commit -m "feat: add sub-areas admin page"
 - Create: `src/app/(app)/units/page.tsx`
 
 **Interfaces:**
-- Consumes: `getCurrentProfile()`, `createClient()`, `canSeeAllAreas(role)` from Task 1
+- Consumes: `getCurrentProfile()`, `createClient()`
 
 - [ ] **Step 1: Create the page**
 
@@ -519,7 +519,6 @@ Create `src/app/(app)/units/page.tsx`:
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
-import { canSeeAllAreas } from "@/lib/auth/get-admin-area-ids";
 
 export default async function UnitsPage() {
   const profile = await getCurrentProfile();
@@ -580,13 +579,10 @@ export default async function UnitsPage() {
           ))}
         </tbody>
       </table>
-      {canSeeAllAreas(profile.role) ? null : null}
     </div>
   );
 }
 ```
-
-Note: the trailing `{canSeeAllAreas(profile.role) ? null : null}` is intentionally a no-op — it exists only so `canSeeAllAreas` has a real call site in this task (Task 5 is where it's used for real, to filter the create-unit form's sub-area dropdown). Leaving an unused import would fail lint. If your linter flags this as pointless, that's correct — delete this line in Task 5 once `canSeeAllAreas` gets a real caller elsewhere in the same file tree.
 
 - [ ] **Step 2: Verify it compiles and the auth redirect works**
 
@@ -607,7 +603,6 @@ git commit -m "feat: add units list page"
 **Files:**
 - Create: `src/app/(app)/units/actions.ts`
 - Create: `src/app/(app)/units/new/page.tsx`
-- Modify: `src/app/(app)/units/page.tsx` — delete the no-op line from Task 1's note above
 
 **Interfaces:**
 - Consumes: `getCurrentProfile()`, `createClient()`, `canSeeAllAreas(role)` and `getAdminAreaIds(profileId)` from Task 1
@@ -884,24 +879,14 @@ export default async function NewUnitPage({
 }
 ```
 
-- [ ] **Step 3: Remove the Task 4 no-op line**
+- [ ] **Step 3: Verify it compiles**
 
-In `src/app/(app)/units/page.tsx`, delete this line (it was a placeholder so `canSeeAllAreas` had a call site before this task existed):
+Run: `npx tsc --noEmit` — no new errors.
 
-```tsx
-      {canSeeAllAreas(profile.role) ? null : null}
-```
-
-Also remove the now-unused `canSeeAllAreas` import from that file's top.
-
-- [ ] **Step 4: Verify it compiles**
-
-Run: `npx tsc --noEmit` — no new errors, and no unused-import warnings for `src/app/(app)/units/page.tsx`.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add "src/app/(app)/units/actions.ts" "src/app/(app)/units/new/page.tsx" "src/app/(app)/units/page.tsx"
+git add "src/app/(app)/units/actions.ts" "src/app/(app)/units/new/page.tsx"
 git commit -m "feat: add create-unit form scoped to admin's areas"
 ```
 
