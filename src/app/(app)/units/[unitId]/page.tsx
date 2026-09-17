@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
+import { canSeeAllAreas, getAdminAreaIds } from "@/lib/auth/get-admin-area-ids";
 import { createUnitSpace } from "./actions";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -24,13 +25,12 @@ export default async function UnitDetailPage({
   const { unitId } = await params;
   const { error, space_created } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
-  const canManage = profile.role === "super_admin" || profile.role === "area_admin";
 
   const supabase = await createClient();
   const { data: unit } = await supabase
     .from("units")
     .select(
-      "id, unit_code, jalan, unit_no, full_address, facing, property_type, land_type, tenure, tenure_years, unit_size, unit_size_type, remarks, status, sub_areas(name, areas(name))",
+      "id, unit_code, jalan, unit_no, full_address, facing, property_type, land_type, tenure, tenure_years, unit_size, unit_size_type, remarks, status, sub_areas(name, area_id, areas(name))",
     )
     .eq("id", unitId)
     .single();
@@ -38,6 +38,12 @@ export default async function UnitDetailPage({
   if (!unit) {
     notFound();
   }
+
+  const canManage =
+    canSeeAllAreas(profile.role) ||
+    (profile.role === "area_admin" &&
+      // @ts-expect-error -- Supabase nested select typing
+      (await getAdminAreaIds(profile.id)).includes(unit.sub_areas?.area_id));
 
   const { data: spaces } = await supabase
     .from("unit_spaces")
@@ -61,6 +67,26 @@ export default async function UnitDetailPage({
           {unit.sub_areas?.areas?.name} / {unit.sub_areas?.name}
         </p>
       </div>
+
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm max-w-md">
+        <dt className="text-slate-500">Facing</dt>
+        <dd className="text-slate-900">{unit.facing ?? "—"}</dd>
+        <dt className="text-slate-500">Property type</dt>
+        <dd className="text-slate-900">{unit.property_type ?? "—"}</dd>
+        <dt className="text-slate-500">Land type</dt>
+        <dd className="text-slate-900">{unit.land_type ?? "—"}</dd>
+        <dt className="text-slate-500">Tenure</dt>
+        <dd className="text-slate-900">
+          {unit.tenure ?? "—"}
+          {unit.tenure_years ? ` (${unit.tenure_years} years)` : ""}
+        </dd>
+        <dt className="text-slate-500">Size</dt>
+        <dd className="text-slate-900">
+          {unit.unit_size ? `${unit.unit_size} ${unit.unit_size_type ?? ""}` : "—"}
+        </dd>
+        <dt className="text-slate-500">Remarks</dt>
+        <dd className="text-slate-900">{unit.remarks ?? "—"}</dd>
+      </dl>
 
       <table className="w-full max-w-2xl text-left text-sm">
         <thead>
