@@ -7,7 +7,10 @@ import { canAccessAdminTools, canManageUsers, type Role } from "@/lib/auth/role"
 
 const DASHBOARD_NAV = { href: "/", label: "Dashboard" };
 
-const GENERAL_NAV = [{ href: "/submit-unit", label: "Submit Unit" }];
+const GENERAL_NAV = [
+  { href: "/submit-unit", label: "Submit Unit" },
+  { href: "/available-listings", label: "Available Listings" },
+];
 
 const ADMIN_NAV = [
   { href: "/units", label: "Units" },
