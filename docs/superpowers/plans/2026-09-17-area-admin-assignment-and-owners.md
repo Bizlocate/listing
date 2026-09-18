@@ -21,7 +21,7 @@ Because RLS already enforces all of this, every Server Action in this plan does 
 - Owner data is sensitive business information — never query or render it on any page reachable by the `sp` role (spec §6, §36). Every file in this plan lives under admin-gated routes/sections only.
 - `verification_status` values are exactly `unverified | possible_owner | verified_owner | wrong_contact`; `contact_status` values are exactly `not_contacted | no_answer | contacted | follow_up | wrong_number | do_not_contact` (spec §6) — use these literal strings, matching the DB CHECK constraints exactly.
 - One Owner may own multiple units; one Unit may have different owners per floor/space (spec §6) — `unit_ownerships.space_id` is nullable (null = whole unit), never force a space selection.
-- "Only mark Verified Owner after confirmation" (spec §9) — `last_verified_date` should only be (re)set when an admin explicitly sets `verification_status` to `verified_owner`, never auto-stamped on unrelated edits.
+- The design spec's workflow section treats reaching `owner_confirmed`/Verified Owner as a deliberate, manual confirmation step — `last_verified_date` should only be (re)set when an admin explicitly sets `verification_status` to `verified_owner`, never auto-stamped on unrelated edits.
 - Light theme, white background, sky-blue accents — match `src/app/(app)/units/[unitId]/page.tsx`'s existing conventions exactly.
 
 ---
@@ -1697,6 +1697,6 @@ git commit -m "feat: link owners page from home"
 
 ## Self-Review Notes
 
-- **Spec coverage:** Area Master admin assignment gap from the previous plan (closed here), Owner Database (spec §6) including the exact verification/contact status enums, Unit Ownership linking a unit or a specific space to an owner (spec §6 — "different owners for different floors"). Owner Search Queue automation (spec §9) and the SP-facing "Request Owner Contact" flow (spec §13-14) are explicitly separate later plans — this plan is the admin-direct Owner CRUD foundation only, same scoping pattern as the previous Units plan being admin-direct Unit CRUD.
+- **Spec coverage:** Area Master admin assignment gap from the previous plan (closed here), Owner Database (spec §6) including the exact verification/contact status enums, Unit Ownership linking a unit or a specific space to an owner (spec §6 — "different owners for different floors"). Owner Search Queue automation (the design spec's Workflow section) and the SP-facing "Request Owner Contact" flow (spec §13-14) are explicitly separate later plans — this plan is the admin-direct Owner CRUD foundation only, same scoping pattern as the previous Units plan being admin-direct Unit CRUD.
 - **Placeholder scan:** none found.
 - **Type consistency:** `VerificationStatus`/`ContactStatus` types and the `VERIFICATION_STATUSES`/`CONTACT_STATUSES` arrays from Task 1 are consumed with matching literal values in Task 6's `<select>` options. `createOwnerForUnit`'s field names (`spaceId`, `primaryContact`, `otherContact`, `icOrCompanyNo`, `ownerType`) match what Task 4's form submits.

@@ -21,7 +21,7 @@ The sidebar nav already has an `"/owner-search"` entry in `ADMIN_NAV` (`src/comp
 
 ## Global Constraints
 
-- "Finding a phone number does NOT automatically mean it is a verified owner. Only mark Verified Owner after confirmation" (spec §9) — this plan's status update NEVER touches the `owners` table or `unit_ownerships`. Reaching `owner_confirmed` on a search task is purely a status label on the *task*; recording the actual Owner (with its own `verification_status`) remains the existing "Add owner" flow on the Unit detail page's Owner tab (already shipped in the Owners plan) — a manual follow-up step, not automated by this plan.
+- The design spec's workflow section describes `owner_confirmed` as equivalent to a Verified Owner, with a `unit_ownership` row created as the next step — this plan deliberately treats that as a *manual* follow-up rather than automating it: this plan's status update NEVER touches the `owners` table or `unit_ownerships`. Reaching `owner_confirmed` on a search task is purely a status label on the *task*; recording the actual Owner (with its own `verification_status`) remains the existing "Add owner" flow on the Unit detail page's Owner tab (already shipped in the Owners plan) — a manual follow-up step, not automated by this plan.
 - `space_id`/`assigned_to` columns exist but are out of scope for this plan (per-space search tasks and admin task assignment are later refinements, spec §20's "assign verification tasks to SP" is explicitly a Phase 2 item) — this plan only reads/writes `status`, `found_contact`, `remarks`.
 - `status` values are exactly the 7 DB CHECK literals — use these literal strings, matching the established `owners`/`listings` status-label-module pattern.
 - Light theme, white background, sky-blue accents, `Badge` component — match established conventions.
@@ -512,6 +512,6 @@ git commit -m "feat: add owner search task update"
 
 ## Self-Review Notes
 
-- **Spec coverage:** Owner Search Queue (spec §9 — status workflow, found-contact recording, explicit non-automatic Owner-verification boundary). The Admin Work Queue dashboard (spec §10, cross-entity "today's work" counts) and per-SP task assignment (spec §20, Phase 2) are explicitly out of scope — this plan is the queue-working page itself, not the dashboard that surfaces it.
+- **Spec coverage:** Owner Search Queue (the design spec's Workflow section — status workflow, found-contact recording, explicit non-automatic Owner-verification boundary). The Admin Work Queue dashboard (spec §10, cross-entity "today's work" counts) and per-SP task assignment (spec §20, Phase 2) are explicitly out of scope — this plan is the queue-working page itself, not the dashboard that surfaces it.
 - **Placeholder scan:** none found.
 - **Type consistency:** `OwnerSearchTaskStatus`/`OWNER_SEARCH_STATUSES` from Task 1 are used identically in Task 2 and Task 3. `updateOwnerSearchTask`'s field names (`taskId`, `status`, `foundContact`, `remarks`) match Task 3's form exactly.
