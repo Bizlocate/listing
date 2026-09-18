@@ -7,10 +7,13 @@ import { canAccessAdminTools, canManageUsers, type Role } from "@/lib/auth/role"
 
 const DASHBOARD_NAV = { href: "/", label: "Dashboard" };
 
+const GENERAL_NAV = [{ href: "/submit-unit", label: "Submit Unit" }];
+
 const ADMIN_NAV = [
   { href: "/units", label: "Units" },
   { href: "/owners", label: "Owners" },
   { href: "/owner-search", label: "Owner search" },
+  { href: "/unit-submissions", label: "Unit submissions" },
   { href: "/listings", label: "Listings" },
   { href: "/contact-requests", label: "Contact requests" },
   { href: "/verification", label: "Verification" },
@@ -63,6 +66,11 @@ export function AppShell({
           <NavLink href={DASHBOARD_NAV.href} active={pathname === DASHBOARD_NAV.href}>
             {DASHBOARD_NAV.label}
           </NavLink>
+          {GENERAL_NAV.map((item) => (
+            <NavLink key={item.href} href={item.href} active={pathname === item.href}>
+              {item.label}
+            </NavLink>
+          ))}
           {showAdminNav
             ? ADMIN_NAV.map((item) => (
                 <NavLink key={item.href} href={item.href} active={pathname === item.href}>
