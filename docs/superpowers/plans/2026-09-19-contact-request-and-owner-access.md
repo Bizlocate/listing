@@ -922,7 +922,7 @@ git commit -m "feat: wire contact requests to real data with temporary owner acc
 3. As `super_admin`, go to `/contact-requests` → confirm the new request appears with Pending badge and the SP's name/listing address. Open it → confirm all submitted fields render.
 4. Click "Approve 48h" → confirm redirect shows "Approved — 48h access granted." and the badge updates to Approved.
 5. Back as `sp` on the same listing detail page → confirm the owner's real name and phone now render, with an "Access expires <date>" line roughly 48h out.
-6. As `super_admin`, run `select access_expiry from contact_access_logs order by created_at desc limit 1;` in SQL Editor, note the row's `id`, then manually `update contact_access_logs set access_expiry = now() - interval '1 hour' where id = '<that id>';` to simulate expiry.
+6. As `super_admin`, run `select access_expiry from contact_access_logs order by access_start desc limit 1;` in SQL Editor, note the row's `id`, then manually `update contact_access_logs set access_expiry = now() - interval '1 hour' where id = '<that id>';` to simulate expiry.
 7. Reload the SP's listing detail page → confirm the panel falls back to "Your access window has expired — request again." with the form showing again (not the phone number).
 8. As `sp`, submit a second request on a different available listing; as admin, click "Reject" on it → confirm the SP's detail page shows "Your last request was rejected — you can request again." and the request form.
 9. Confirm `/contact-requests` for an `area_admin` scoped to a different area does not show requests for listings outside their assigned area (RLS `contact_requests_select` already enforces this — verify the list is empty or correctly filtered for that admin).

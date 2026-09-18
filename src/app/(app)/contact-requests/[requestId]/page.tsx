@@ -1,4 +1,5 @@
 import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/badge";
@@ -6,10 +7,11 @@ import {
   contactRequestReasonLabel,
   contactRequestStatusLabel,
   contactRequestStatusTone,
+  isContactAccessActive,
   type ContactRequestReason,
   type ContactRequestStatus,
 } from "@/lib/contact-requests/labels";
-import { approveContactRequest, rejectContactRequest } from "./actions";
+import { approveContactRequest, rejectContactRequest, revokeContactAccess } from "./actions";
 
 const ERROR_MESSAGES: Record<string, string> = {
   no_owner: "This unit has no owner on record yet — add one before approving.",
@@ -22,7 +24,7 @@ export default async function ContactRequestDetailPage({
   searchParams,
 }: {
   params: Promise<{ requestId: string }>;
-  searchParams: Promise<{ error?: string; approved?: string; rejected?: string }>;
+  searchParams: Promise<{ error?: string; approved?: string; rejected?: string; revoked?: string }>;
 }) {
   const profile = await getCurrentProfile();
   if (!profile || (profile.role !== "super_admin" && profile.role !== "area_admin")) {
@@ -30,7 +32,7 @@ export default async function ContactRequestDetailPage({
   }
 
   const { requestId } = await params;
-  const { error, approved, rejected } = await searchParams;
+  const { error, approved, rejected, revoked } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
 
   const supabase = await createClient();
@@ -46,11 +48,26 @@ export default async function ContactRequestDetailPage({
     notFound();
   }
 
+  let activeAccess = false;
+  if (request.status === "approved") {
+    const { data: accessLog } = await supabase
+      .from("contact_access_logs")
+      .select("id, access_expiry, revoked")
+      .eq("contact_request_id", requestId)
+      .order("access_start", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (accessLog) {
+      activeAccess = isContactAccessActive(accessLog.access_expiry, accessLog.revoked);
+    }
+  }
+
   return (
     <div className="max-w-2xl space-y-5">
-      <a className="text-sm text-sky-600" href="/contact-requests">
+      <Link className="text-sm text-sky-600" href="/contact-requests">
         ← Contact requests
-      </a>
+      </Link>
 
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="mr-auto text-lg font-semibold text-slate-900">
@@ -81,6 +98,7 @@ export default async function ContactRequestDetailPage({
 
         {approved ? <p className="mt-4 text-sm text-sky-700">Approved — 48h access granted.</p> : null}
         {rejected ? <p className="mt-4 text-sm text-slate-600">Rejected.</p> : null}
+        {revoked ? <p className="mt-4 text-sm text-slate-600">Access revoked.</p> : null}
         {errorMessage ? <p className="mt-4 text-sm text-red-600">{errorMessage}</p> : null}
 
         {request.status === "pending" ? (
@@ -101,6 +119,20 @@ export default async function ContactRequestDetailPage({
                 className="rounded-full border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Reject
+              </button>
+            </form>
+          </div>
+        ) : null}
+
+        {activeAccess ? (
+          <div className="mt-5">
+            <form action={revokeContactAccess}>
+              <input type="hidden" name="contactRequestId" value={request.id} />
+              <button
+                type="submit"
+                className="rounded-full border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50"
+              >
+                Revoke access
               </button>
             </form>
           </div>

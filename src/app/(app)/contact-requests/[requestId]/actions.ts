@@ -29,8 +29,9 @@ export async function approveContactRequest(formData: FormData) {
     .from("unit_ownerships")
     .select("owner_id")
     .eq("unit_id", unitId)
+    .is("end_date", null)
     .order("is_primary", { ascending: false })
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -91,4 +92,22 @@ export async function rejectContactRequest(formData: FormData) {
   }
 
   redirect(`/contact-requests/${requestId}?rejected=1`);
+}
+
+export async function revokeContactAccess(formData: FormData) {
+  const actor = await getCurrentProfile();
+  if (!actor || (actor.role !== "super_admin" && actor.role !== "area_admin")) {
+    redirect("/");
+  }
+
+  const requestId = String(formData.get("contactRequestId"));
+  const supabase = await createClient();
+
+  await supabase
+    .from("contact_access_logs")
+    .update({ revoked: true })
+    .eq("contact_request_id", requestId)
+    .eq("revoked", false);
+
+  redirect(`/contact-requests/${requestId}?revoked=1`);
 }

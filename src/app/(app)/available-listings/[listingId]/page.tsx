@@ -9,7 +9,6 @@ import {
   contactRequestStatusLabel,
   contactRequestStatusTone,
   type ContactRequestReason,
-  type ContactRequestStatus,
 } from "@/lib/contact-requests/labels";
 import { requestOwnerContact } from "./actions";
 
@@ -60,7 +59,7 @@ export default async function AvailableListingDetailPage({
 
   const { data: reveal } = await supabase
     .rpc("get_owner_contact_for_listing", { p_listing_id: listingId })
-    .maybeSingle<{ owner_name: string; phone: string; access_expiry: string }>();
+    .maybeSingle<{ owner_name: string; phone: string; access_expiry: string | null }>();
 
   return (
     <div className="max-w-2xl space-y-5">
@@ -90,20 +89,25 @@ export default async function AvailableListingDetailPage({
           <div className="mt-2">
             <p className="font-semibold text-slate-900">{reveal.owner_name}</p>
             <p className="text-slate-900">{reveal.phone}</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Access expires {new Date(reveal.access_expiry).toLocaleString("en-MY")}
-            </p>
+            {reveal.access_expiry ? (
+              <p className="mt-1 text-sm text-slate-600">
+                Access expires {new Date(reveal.access_expiry).toLocaleString("en-MY")}
+              </p>
+            ) : null}
           </div>
         ) : latestRequest?.status === "pending" ? (
           <p className="mt-2 text-sm text-slate-600">
-            <Badge tone={contactRequestStatusTone("pending")}>Pending</Badge> Waiting for admin approval.
+            <Badge tone={contactRequestStatusTone("pending")}>{contactRequestStatusLabel("pending")}</Badge>{" "}
+            Waiting for admin approval.
           </p>
         ) : (
           <>
             {latestRequest?.status === "rejected" ? (
               <p className="mt-2 text-sm text-slate-600">
-                <Badge tone={contactRequestStatusTone("rejected")}>Rejected</Badge> Your last request was
-                rejected — you can request again.
+                <Badge tone={contactRequestStatusTone("rejected")}>
+                  {contactRequestStatusLabel("rejected")}
+                </Badge>{" "}
+                Your last request was rejected — you can request again.
               </p>
             ) : latestRequest?.status === "approved" ? (
               <p className="mt-2 text-sm text-slate-600">Your access window has expired — request again.</p>

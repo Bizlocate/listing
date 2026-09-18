@@ -17,13 +17,15 @@ language sql stable security definer set search_path = public as $$
     and cal.revoked = false
     and cal.access_expiry > now()
   where l.id = p_listing_id
+    and uo.end_date is null
     and (
       public.is_super_admin()
       or public.is_area_admin_for_area(public.area_id_for_listing(p_listing_id))
       or cal.id is not null
     )
-  order by uo.is_primary desc, uo.created_at asc
+  order by uo.is_primary desc, uo.created_at desc
   limit 1;
 $$;
 
+revoke execute on function public.get_owner_contact_for_listing(uuid) from public;
 grant execute on function public.get_owner_contact_for_listing(uuid) to authenticated;
