@@ -53,7 +53,7 @@ export default async function SubmitUnitPage({
       }
       const { data: existingUnits } = await supabase
         .from("units")
-        .select("id, unit_code, jalan, unit_no, full_address")
+        .select("id, unit_code, jalan, unit_no, full_address, sub_area_id")
         .eq("sub_area_id", s.sub_area_id);
 
       const candidates = findDuplicateCandidates(
@@ -61,7 +61,7 @@ export default async function SubmitUnitPage({
         (existingUnits ?? []).map((u) => ({
           id: u.id,
           unitCode: u.unit_code,
-          subAreaId: s.sub_area_id as string,
+          subAreaId: u.sub_area_id,
           jalan: u.jalan,
           unitNo: u.unit_no,
           fullAddress: u.full_address,
