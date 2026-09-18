@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   ownerSearchStatusLabel,
   ownerSearchStatusTone,
+  isOwnerSearchTaskOpen,
   OWNER_SEARCH_STATUSES,
 } from "./status-labels";
 
@@ -28,6 +29,21 @@ describe("ownerSearchStatusTone", () => {
     expect(ownerSearchStatusTone("owner_confirmed")).toBe("ok");
     expect(ownerSearchStatusTone("wrong_number")).toBe("dark");
     expect(ownerSearchStatusTone("unable_to_reach")).toBe("dark");
+  });
+});
+
+describe("isOwnerSearchTaskOpen", () => {
+  it("is false for the three terminal statuses", () => {
+    expect(isOwnerSearchTaskOpen("owner_confirmed")).toBe(false);
+    expect(isOwnerSearchTaskOpen("wrong_number")).toBe(false);
+    expect(isOwnerSearchTaskOpen("unable_to_reach")).toBe(false);
+  });
+
+  it("is true for the four in-progress statuses", () => {
+    expect(isOwnerSearchTaskOpen("need_search")).toBe(true);
+    expect(isOwnerSearchTaskOpen("number_found")).toBe(true);
+    expect(isOwnerSearchTaskOpen("contacting")).toBe(true);
+    expect(isOwnerSearchTaskOpen("follow_up_later")).toBe(true);
   });
 });
 

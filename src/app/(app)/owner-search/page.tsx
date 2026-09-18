@@ -5,6 +5,7 @@ import { Badge } from "@/components/badge";
 import {
   ownerSearchStatusLabel,
   ownerSearchStatusTone,
+  isOwnerSearchTaskOpen,
   type OwnerSearchTaskStatus,
 } from "@/lib/owner-search/status-labels";
 
@@ -22,10 +23,12 @@ export default async function OwnerSearchPage() {
     )
     .order("created_at", { ascending: true });
 
-  const rows = tasks ?? [];
-  const openCount = rows.filter(
-    (t) => t.status !== "owner_confirmed" && t.status !== "wrong_number" && t.status !== "unable_to_reach",
-  ).length;
+  const allRows = tasks ?? [];
+  const rows = [
+    ...allRows.filter((t) => isOwnerSearchTaskOpen(t.status as OwnerSearchTaskStatus)),
+    ...allRows.filter((t) => !isOwnerSearchTaskOpen(t.status as OwnerSearchTaskStatus)),
+  ];
+  const openCount = rows.filter((t) => isOwnerSearchTaskOpen(t.status as OwnerSearchTaskStatus)).length;
   const confirmedCount = rows.filter((t) => t.status === "owner_confirmed").length;
 
   return (

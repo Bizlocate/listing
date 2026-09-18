@@ -46,3 +46,7 @@ export function ownerSearchStatusLabel(status: OwnerSearchTaskStatus): string {
 export function ownerSearchStatusTone(status: OwnerSearchTaskStatus): BadgeTone {
   return STATUS_TONES[status];
 }
+
+export function isOwnerSearchTaskOpen(status: OwnerSearchTaskStatus): boolean {
+  return status !== "owner_confirmed" && status !== "wrong_number" && status !== "unable_to_reach";
+}
