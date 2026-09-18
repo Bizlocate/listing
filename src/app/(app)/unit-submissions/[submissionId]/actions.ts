@@ -17,7 +17,8 @@ export async function linkSubmissionToUnit(formData: FormData) {
   const { error } = await supabase
     .from("unit_submissions")
     .update({ status: "linked", matched_unit_id: unitId })
-    .eq("id", submissionId);
+    .eq("id", submissionId)
+    .eq("status", "pending");
 
   if (error) {
     redirect(`/unit-submissions/${submissionId}?error=link_failed`);
@@ -33,20 +34,36 @@ export async function createUnitFromSubmission(formData: FormData) {
   }
 
   const submissionId = String(formData.get("submissionId"));
-  const subAreaId = String(formData.get("subAreaId"));
   const jalan = String(formData.get("jalan") ?? "");
   const unitNo = String(formData.get("unitNo") ?? "");
   const address = String(formData.get("address"));
 
   const supabase = await createClient();
 
+  // Atomically claim the submission: only succeeds if it's still pending.
+  // This is what prevents two concurrent reviews (or a retry after a
+  // partial failure) from creating two units for the same submission.
+  const { data: claimed, error: claimError } = await supabase
+    .from("unit_submissions")
+    .update({ status: "converted" })
+    .eq("id", submissionId)
+    .eq("status", "pending")
+    .select("sub_area_id, lat, lng")
+    .maybeSingle();
+
+  if (claimError || !claimed) {
+    redirect(`/unit-submissions/${submissionId}?error=already_handled`);
+  }
+
   const { data: unit, error: unitError } = await supabase
     .from("units")
     .insert({
-      sub_area_id: subAreaId,
+      sub_area_id: claimed!.sub_area_id,
       jalan: jalan || null,
       unit_no: unitNo || null,
       full_address: address,
+      lat: claimed!.lat,
+      lng: claimed!.lng,
       created_by: actor.id,
       updated_by: actor.id,
     })
@@ -65,12 +82,12 @@ export async function createUnitFromSubmission(formData: FormData) {
     redirect(`/unit-submissions/${submissionId}?error=search_task_failed`);
   }
 
-  const { error: submissionError } = await supabase
+  const { error: matchError } = await supabase
     .from("unit_submissions")
-    .update({ status: "converted", matched_unit_id: unit!.id })
+    .update({ matched_unit_id: unit!.id })
     .eq("id", submissionId);
 
-  if (submissionError) {
+  if (matchError) {
     redirect(`/unit-submissions/${submissionId}?error=update_failed`);
   }
 

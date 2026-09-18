@@ -9,6 +9,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   create_failed: "Could not create unit. Try again.",
   search_task_failed: "Unit created, but the owner search task could not be created.",
   update_failed: "Unit created, but the submission status could not be updated.",
+  already_handled: "This submission has already been handled by another review.",
 };
 
 const FIELD_CLASSES =
@@ -54,7 +55,7 @@ export default async function UnitSubmissionDetailPage({
   if (submission.sub_area_id) {
     const { data: existingUnits } = await supabase
       .from("units")
-      .select("id, unit_code, jalan, unit_no, full_address")
+      .select("id, unit_code, jalan, unit_no, full_address, sub_area_id")
       .eq("sub_area_id", submission.sub_area_id);
 
     candidates = findDuplicateCandidates(
@@ -67,7 +68,7 @@ export default async function UnitSubmissionDetailPage({
       (existingUnits ?? []).map((u) => ({
         id: u.id,
         unitCode: u.unit_code,
-        subAreaId: submission.sub_area_id as string,
+        subAreaId: u.sub_area_id,
         jalan: u.jalan,
         unitNo: u.unit_no,
         fullAddress: u.full_address,
