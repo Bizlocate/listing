@@ -52,7 +52,9 @@ export default async function ListingDetailPage({
 
   const { data: ownerships } = await supabase
     .from("unit_ownerships")
-    .select("id, owners(id, name, primary_contact, verification_status, contact_status)")
+    .select(
+      "id, space_id, unit_spaces(floor_label), owners(id, name, primary_contact, verification_status, contact_status)",
+    )
     .eq("unit_id", listing.unit_id);
 
   return (
@@ -150,14 +152,20 @@ export default async function ListingDetailPage({
             ) : (
               (ownerships ?? []).map((o) => (
                 <div key={o.id} className="mt-2 first:mt-0">
-                  <a
-                    className="font-semibold text-sky-700"
-                    // @ts-expect-error -- Supabase nested select typing
-                    href={`/owners/${o.owners?.id}`}
-                  >
-                    {/* @ts-expect-error -- Supabase nested select typing */}
-                    {o.owners?.name}
-                  </a>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a
+                      className="font-semibold text-sky-700"
+                      // @ts-expect-error -- Supabase nested select typing
+                      href={`/owners/${o.owners?.id}`}
+                    >
+                      {/* @ts-expect-error -- Supabase nested select typing */}
+                      {o.owners?.name}
+                    </a>
+                    <span className="text-sm text-slate-600">
+                      {/* @ts-expect-error -- Supabase nested select typing */}
+                      · {o.unit_spaces?.floor_label ?? "Whole unit"}
+                    </span>
+                  </div>
                   <div className="text-sm text-slate-600">
                     {/* @ts-expect-error -- Supabase nested select typing */}
                     {o.owners?.primary_contact ?? "—"}

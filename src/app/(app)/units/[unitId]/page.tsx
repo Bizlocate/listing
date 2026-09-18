@@ -30,7 +30,12 @@ export default async function UnitDetailPage({
   searchParams,
 }: {
   params: Promise<{ unitId: string }>;
-  searchParams: Promise<{ error?: string; space_created?: string; owner_added?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    space_created?: string;
+    owner_added?: string;
+    listing_created?: string;
+  }>;
 }) {
   const profile = await getCurrentProfile();
   if (!profile) {
@@ -38,14 +43,16 @@ export default async function UnitDetailPage({
   }
 
   const { unitId } = await params;
-  const { error, space_created, owner_added } = await searchParams;
+  const { error, space_created, owner_added, listing_created } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
-  const initialTab: "overview" | "spaces" | "owner" =
-    owner_added || error === "owner_create_failed" || error === "ownership_link_failed"
-      ? "owner"
-      : space_created || error === "space_create_failed"
-        ? "spaces"
-        : "overview";
+  const initialTab: "overview" | "spaces" | "owner" | "listings" =
+    listing_created
+      ? "listings"
+      : owner_added || error === "owner_create_failed" || error === "ownership_link_failed"
+        ? "owner"
+        : space_created || error === "space_create_failed"
+          ? "spaces"
+          : "overview";
 
   const supabase = await createClient();
   const { data: unit } = await supabase
@@ -286,6 +293,7 @@ export default async function UnitDetailPage({
 
   const listingsContent = (
     <div className="space-y-4">
+      {listing_created ? <p className="text-sm text-sky-700">Listing created.</p> : null}
       <div className="grid gap-3">
         {(listings ?? []).map((l) => (
           <a
