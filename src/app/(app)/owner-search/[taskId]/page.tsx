@@ -1,4 +1,5 @@
 import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -46,9 +47,9 @@ export default async function OwnerSearchTaskPage({
 
   return (
     <div className="max-w-2xl space-y-5">
-      <a className="text-sm text-sky-600" href="/owner-search">
+      <Link className="text-sm text-sky-600" href="/owner-search">
         ← Owner search
-      </a>
+      </Link>
 
       <div>
         <h1 className="text-lg font-semibold text-slate-900">
@@ -66,8 +67,11 @@ export default async function OwnerSearchTaskPage({
 
       {task.status === "owner_confirmed" ? (
         <p className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          Once confirmed, record the owner's details on the unit's Owner tab — this task's status alone
-          doesn't create an Owner record.
+          Once confirmed, record the owner&apos;s details on{" "}
+          <Link href={`/units/${task.unit_id}?tab=owner`} className="font-semibold underline">
+            the unit&apos;s Owner tab
+          </Link>{" "}
+          — this task&apos;s status alone doesn&apos;t create an Owner record.
         </p>
       ) : null}
 
