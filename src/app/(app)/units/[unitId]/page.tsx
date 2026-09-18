@@ -3,6 +3,8 @@ import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
 import { canSeeAllAreas, getAdminAreaIds } from "@/lib/auth/get-admin-area-ids";
 import { verificationStatusLabel, contactStatusLabel } from "@/lib/owners/status-labels";
+import { Badge } from "@/components/badge";
+import { UnitDetailTabs } from "@/components/unit-detail-tabs";
 import { createUnitSpace, createOwnerForUnit } from "./actions";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -12,6 +14,9 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 const FLOOR_TYPES = ["Ground", "Mezzanine", "1st", "2nd", "3rd", "Upper Floor", "Whole Building", "Custom"];
+
+const FIELD_CLASSES =
+  "w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none";
 
 export default async function UnitDetailPage({
   params,
@@ -65,83 +70,57 @@ export default async function UnitDetailPage({
       ).data
     : null;
 
-  return (
-    <div className="space-y-6">
-      <a className="text-sm text-sky-600" href="/units">
-        ← Units
-      </a>
-
-      <div>
-        <h1 className="text-lg font-semibold text-slate-900">{unit.unit_code}</h1>
-        <p className="text-slate-600">
-          {unit.jalan} {unit.unit_no}, {unit.full_address}
-        </p>
-        <p className="text-sm text-slate-600">
-          {/* @ts-expect-error -- Supabase nested select typing */}
-          {unit.sub_areas?.areas?.name} / {unit.sub_areas?.name}
-        </p>
+  const overviewContent = (
+    <>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
+        <Field label="Facing" value={unit.facing} />
+        <Field label="Property type" value={unit.property_type} />
+        <Field label="Land type" value={unit.land_type} />
+        <Field
+          label="Tenure"
+          value={unit.tenure ? `${unit.tenure}${unit.tenure_years ? ` (${unit.tenure_years} yrs)` : ""}` : null}
+        />
+        <Field
+          label="Size"
+          value={unit.unit_size ? `${unit.unit_size} ${unit.unit_size_type ?? ""}` : null}
+        />
       </div>
+      <p className="mt-4 text-sm text-slate-600">{unit.remarks ?? "No remarks."}</p>
+    </>
+  );
 
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm max-w-md">
-        <dt className="text-slate-500">Facing</dt>
-        <dd className="text-slate-900">{unit.facing ?? "—"}</dd>
-        <dt className="text-slate-500">Property type</dt>
-        <dd className="text-slate-900">{unit.property_type ?? "—"}</dd>
-        <dt className="text-slate-500">Land type</dt>
-        <dd className="text-slate-900">{unit.land_type ?? "—"}</dd>
-        <dt className="text-slate-500">Tenure</dt>
-        <dd className="text-slate-900">
-          {unit.tenure ?? "—"}
-          {unit.tenure_years ? ` (${unit.tenure_years} years)` : ""}
-        </dd>
-        <dt className="text-slate-500">Size</dt>
-        <dd className="text-slate-900">
-          {unit.unit_size ? `${unit.unit_size} ${unit.unit_size_type ?? ""}` : "—"}
-        </dd>
-        <dt className="text-slate-500">Remarks</dt>
-        <dd className="text-slate-900">{unit.remarks ?? "—"}</dd>
-      </dl>
-
-      <table className="w-full max-w-2xl text-left text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 text-slate-500">
-            <th className="py-2 pr-4">Floor</th>
-            <th className="py-2 pr-4">Size</th>
-            <th className="py-2 pr-4">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(spaces ?? []).map((s) => (
-            <tr key={s.id} className="border-b border-slate-100">
-              <td className="py-2 pr-4 text-slate-900">{s.floor_label}</td>
-              <td className="py-2 pr-4 text-slate-600">
-                {s.size ? `${s.size} ${s.size_type ?? ""}` : "—"}
-              </td>
-              <td className="py-2 pr-4 text-slate-600">{s.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+  const spacesContent = (
+    <div className="grid gap-3">
+      {(spaces ?? []).map((s) => (
+        <div
+          key={s.id}
+          className="flex items-center gap-3 rounded-xl bg-sky-50 px-4 py-3"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-slate-900">{s.floor_label}</p>
+            <p className="text-sm text-slate-600">
+              {s.size ? `${s.size} ${s.size_type ?? ""}` : "Size not set"}
+            </p>
+          </div>
+          <Badge tone="neutral">{s.status}</Badge>
+        </div>
+      ))}
+      {(spaces ?? []).length === 0 ? <p className="text-sm text-slate-600">No spaces yet.</p> : null}
 
       {canManage ? (
         <form
           action={createUnitSpace}
-          className="max-w-sm space-y-4 rounded-lg border border-sky-100 p-6 shadow-sm"
+          className="mt-2 max-w-sm space-y-4 rounded-xl border border-sky-100 p-5"
         >
           <input type="hidden" name="unitId" value={unit.id} />
-          <h2 className="font-medium text-slate-900">Add space</h2>
+          <h3 className="font-medium text-slate-900">Add space</h3>
           {space_created ? <p className="text-sm text-sky-700">Space added.</p> : null}
           {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
           <div className="space-y-1">
             <label className="text-sm text-slate-700" htmlFor="floorType">
               Floor type
             </label>
-            <select
-              id="floorType"
-              name="floorType"
-              required
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
-            >
+            <select id="floorType" name="floorType" required className={FIELD_CLASSES}>
               {FLOOR_TYPES.map((ft) => (
                 <option key={ft} value={ft}>
                   {ft}
@@ -153,33 +132,19 @@ export default async function UnitDetailPage({
             <label className="text-sm text-slate-700" htmlFor="floorLabel">
               Floor label (e.g. 45-G)
             </label>
-            <input
-              id="floorLabel"
-              name="floorLabel"
-              required
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
-            />
+            <input id="floorLabel" name="floorLabel" required className={FIELD_CLASSES} />
           </div>
           <div className="space-y-1">
             <label className="text-sm text-slate-700" htmlFor="size">
               Size
             </label>
-            <input
-              id="size"
-              name="size"
-              type="number"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
-            />
+            <input id="size" name="size" type="number" className={FIELD_CLASSES} />
           </div>
           <div className="space-y-1">
             <label className="text-sm text-slate-700" htmlFor="sizeType">
               Size type (e.g. sqft)
             </label>
-            <input
-              id="sizeType"
-              name="sizeType"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
-            />
+            <input id="sizeType" name="sizeType" className={FIELD_CLASSES} />
           </div>
           <button
             type="submit"
@@ -189,141 +154,151 @@ export default async function UnitDetailPage({
           </button>
         </form>
       ) : null}
+    </div>
+  );
 
-      {canManage ? (
-        <div className="space-y-4">
-          <h2 className="font-medium text-slate-900">Owners</h2>
-          {owner_added ? <p className="text-sm text-sky-700">Owner added.</p> : null}
-
-          <table className="w-full max-w-2xl text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
-                <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Space</th>
-                <th className="py-2 pr-4">Contact</th>
-                <th className="py-2 pr-4">Verification</th>
-                <th className="py-2 pr-4">Contact status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(ownerships ?? []).map((o) => (
-                <tr key={o.id} className="border-b border-slate-100">
-                  <td className="py-2 pr-4 text-sky-700">
-                    {/* @ts-expect-error -- Supabase nested select typing */}
-                    <a href={`/owners/${o.owners?.id}`}>{o.owners?.name}</a>
-                  </td>
-                  <td className="py-2 pr-4 text-slate-600">
-                    {/* @ts-expect-error -- Supabase nested select typing */}
-                    {o.unit_spaces?.floor_label ?? "Whole unit"}
-                  </td>
-                  {/* @ts-expect-error -- Supabase nested select typing */}
-                  <td className="py-2 pr-4 text-slate-600">{o.owners?.primary_contact ?? "—"}</td>
-                  <td className="py-2 pr-4 text-slate-600">
-                    {/* @ts-expect-error -- Supabase nested select typing */}
-                    {verificationStatusLabel(o.owners?.verification_status)}
-                  </td>
-                  <td className="py-2 pr-4 text-slate-600">
-                    {/* @ts-expect-error -- Supabase nested select typing */}
-                    {contactStatusLabel(o.owners?.contact_status)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <form
-            action={createOwnerForUnit}
-            className="max-w-sm space-y-4 rounded-lg border border-sky-100 p-6 shadow-sm"
-          >
-            <input type="hidden" name="unitId" value={unit.id} />
-            <h3 className="font-medium text-slate-900">Add owner</h3>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-700" htmlFor="spaceId">
-                Space (leave blank for whole unit)
-              </label>
-              <select
-                id="spaceId"
-                name="spaceId"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
+  const ownerContent = canManage ? (
+    <div className="space-y-4">
+      {owner_added ? <p className="text-sm text-sky-700">Owner added.</p> : null}
+      <div className="grid gap-3">
+        {(ownerships ?? []).map((o) => (
+          <div key={o.id} className="rounded-xl bg-sky-50 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                className="font-semibold text-sky-700"
+                // @ts-expect-error -- Supabase nested select typing
+                href={`/owners/${o.owners?.id}`}
               >
-                <option value="">Whole unit</option>
-                {(spaces ?? []).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.floor_label}
-                  </option>
-                ))}
-              </select>
+                {/* @ts-expect-error -- Supabase nested select typing */}
+                {o.owners?.name}
+              </a>
+              <span className="text-sm text-slate-600">
+                {/* @ts-expect-error -- Supabase nested select typing */}
+                · {o.unit_spaces?.floor_label ?? "Whole unit"}
+              </span>
             </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-700" htmlFor="name">
-                Name
-              </label>
-              <input
-                id="name"
-                name="name"
-                required
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
-              />
+            <div className="mt-1 text-sm text-slate-600">
+              {/* @ts-expect-error -- Supabase nested select typing */}
+              {o.owners?.primary_contact ?? "—"}
             </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-700" htmlFor="primaryContact">
-                Primary contact
-              </label>
-              <input
-                id="primaryContact"
-                name="primaryContact"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
-              />
+            <div className="mt-2 flex gap-2">
+              <Badge tone="accent">
+                {/* @ts-expect-error -- Supabase nested select typing */}
+                {verificationStatusLabel(o.owners?.verification_status)}
+              </Badge>
+              <Badge tone="neutral">
+                {/* @ts-expect-error -- Supabase nested select typing */}
+                {contactStatusLabel(o.owners?.contact_status)}
+              </Badge>
             </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-700" htmlFor="otherContact">
-                Other contact
-              </label>
-              <input
-                id="otherContact"
-                name="otherContact"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-700" htmlFor="icOrCompanyNo">
-                IC / Company No
-              </label>
-              <input
-                id="icOrCompanyNo"
-                name="icOrCompanyNo"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-700" htmlFor="ownerType">
-                Owner type
-              </label>
-              <input
-                id="ownerType"
-                name="ownerType"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-700" htmlFor="remarks">
-                Remarks
-              </label>
-              <textarea
-                id="remarks"
-                name="remarks"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-sky-500 focus:outline-none"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full rounded-md bg-sky-600 px-4 py-2 text-base font-medium text-white hover:bg-sky-700"
-            >
-              Add owner
-            </button>
-          </form>
+          </div>
+        ))}
+        {(ownerships ?? []).length === 0 ? (
+          <p className="text-sm text-slate-600">No owner on record yet.</p>
+        ) : null}
+      </div>
+
+      <form
+        action={createOwnerForUnit}
+        className="max-w-sm space-y-4 rounded-xl border border-sky-100 p-5"
+      >
+        <input type="hidden" name="unitId" value={unit.id} />
+        <h3 className="font-medium text-slate-900">Add owner</h3>
+        <div className="space-y-1">
+          <label className="text-sm text-slate-700" htmlFor="spaceId">
+            Space (leave blank for whole unit)
+          </label>
+          <select id="spaceId" name="spaceId" className={FIELD_CLASSES}>
+            <option value="">Whole unit</option>
+            {(spaces ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.floor_label}
+              </option>
+            ))}
+          </select>
         </div>
-      ) : null}
+        <div className="space-y-1">
+          <label className="text-sm text-slate-700" htmlFor="name">
+            Name
+          </label>
+          <input id="name" name="name" required className={FIELD_CLASSES} />
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm text-slate-700" htmlFor="primaryContact">
+            Primary contact
+          </label>
+          <input id="primaryContact" name="primaryContact" className={FIELD_CLASSES} />
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm text-slate-700" htmlFor="otherContact">
+            Other contact
+          </label>
+          <input id="otherContact" name="otherContact" className={FIELD_CLASSES} />
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm text-slate-700" htmlFor="icOrCompanyNo">
+            IC / Company No
+          </label>
+          <input id="icOrCompanyNo" name="icOrCompanyNo" className={FIELD_CLASSES} />
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm text-slate-700" htmlFor="ownerType">
+            Owner type
+          </label>
+          <input id="ownerType" name="ownerType" className={FIELD_CLASSES} />
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm text-slate-700" htmlFor="remarks">
+            Remarks
+          </label>
+          <textarea id="remarks" name="remarks" className={FIELD_CLASSES} />
+        </div>
+        <button
+          type="submit"
+          className="w-full rounded-md bg-sky-600 px-4 py-2 text-base font-medium text-white hover:bg-sky-700"
+        >
+          Add owner
+        </button>
+      </form>
+    </div>
+  ) : (
+    <p className="text-sm text-slate-600">Owner details are restricted to your assigned areas.</p>
+  );
+
+  return (
+    <div className="max-w-4xl space-y-5">
+      <a className="text-sm text-sky-600" href="/units">
+        ← Units
+      </a>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            {unit.unit_code}
+          </div>
+          <h1 className="text-xl font-semibold text-slate-900">
+            {unit.jalan} {unit.unit_no}
+          </h1>
+          <p className="text-sm text-slate-600">
+            {/* @ts-expect-error -- Supabase nested select typing */}
+            {unit.sub_areas?.areas?.name} / {unit.sub_areas?.name} · {unit.full_address}
+          </p>
+        </div>
+        <Badge tone={unit.status === "active" ? "ok" : "neutral"}>
+          {unit.status === "active" ? "Active" : "Archived"}
+        </Badge>
+      </div>
+
+      <UnitDetailTabs overview={overviewContent} spaces={spacesContent} owner={ownerContent} />
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string | number | null | undefined }) {
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="text-slate-900">{value ?? "—"}</div>
     </div>
   );
 }
