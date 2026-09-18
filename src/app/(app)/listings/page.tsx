@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { Badge } from "@/components/badge";
 import {
@@ -20,17 +21,17 @@ export default async function ListingsPage() {
         <h1 className="mr-auto text-lg font-semibold text-slate-900">Listings</h1>
         <Badge tone="ok">Available {countListingsByStatus("available")}</Badge>
         <Badge tone="accent">Reserved {countListingsByStatus("reserved")}</Badge>
-        <a
+        <Link
           href="/listings/new"
           className="rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700"
         >
           New listing
-        </a>
+        </Link>
       </div>
 
       <div className="rounded-2xl border border-sky-100 bg-white shadow-sm">
         {MOCK_LISTINGS.map((listing, i) => (
-          <a
+          <Link
             key={listing.id}
             href={`/listings/${listing.id}`}
             className={`flex items-center gap-4 px-5 py-3.5 hover:bg-sky-50/60 ${
@@ -48,7 +49,7 @@ export default async function ListingsPage() {
             <strong className="w-24 flex-none text-right text-slate-900">
               RM {listing.askingRental.toLocaleString()}
             </strong>
-          </a>
+          </Link>
         ))}
       </div>
     </div>

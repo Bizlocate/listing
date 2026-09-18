@@ -1,4 +1,5 @@
 import { redirect, notFound } from "next/navigation";
+import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { Badge } from "@/components/badge";
 import { getListingById, LISTING_STATUS_LABEL, LISTING_STATUS_TONE } from "@/lib/mock/listings";
@@ -22,9 +23,9 @@ export default async function ListingDetailPage({
   return (
     <div className="max-w-4xl space-y-5">
       <div className="flex flex-wrap items-center gap-3">
-        <a href="/listings" className="rounded-full border border-slate-300 px-3.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+        <Link href="/listings" className="rounded-full border border-slate-300 px-3.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
           ← Listings
-        </a>
+        </Link>
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             {listing.code} {listing.exclusive ? "· exclusive" : ""}

@@ -14,12 +14,14 @@ export function UnitDetailTabs({
   overview,
   spaces,
   owner,
+  initialTab = "overview",
 }: {
   overview: React.ReactNode;
   spaces: React.ReactNode;
   owner: React.ReactNode;
+  initialTab?: Tab;
 }) {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const panels: Record<Tab, React.ReactNode> = { overview, spaces, owner };
 
   return (

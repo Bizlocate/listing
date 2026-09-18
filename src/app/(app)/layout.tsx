@@ -16,7 +16,12 @@ export default async function AppLayout({
   }
 
   return (
-    <AppShell fullName={profile.fullName} roleLabel={roleLabel(profile.role)} signOutAction={signOut}>
+    <AppShell
+      fullName={profile.fullName}
+      roleLabel={roleLabel(profile.role)}
+      role={profile.role}
+      signOutAction={signOut}
+    >
       {children}
     </AppShell>
   );

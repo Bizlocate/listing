@@ -3,10 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { canAccessAdminTools, canManageUsers, type Role } from "@/lib/auth/role";
+
+const DASHBOARD_NAV = { href: "/", label: "Dashboard" };
 
 const ADMIN_NAV = [
-  { href: "/", label: "Dashboard" },
   { href: "/units", label: "Units" },
+  { href: "/owners", label: "Owners" },
   { href: "/owner-search", label: "Owner search" },
   { href: "/listings", label: "Listings" },
   { href: "/contact-requests", label: "Contact requests" },
@@ -21,16 +24,20 @@ const USERS_AREAS_NAV = [
 export function AppShell({
   fullName,
   roleLabel,
+  role,
   signOutAction,
   children,
 }: {
   fullName: string;
   roleLabel: string;
+  role: Role;
   signOutAction: () => Promise<void>;
   children: React.ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(true);
   const pathname = usePathname();
+  const showAdminNav = canAccessAdminTools(role);
+  const showUsersAreasNav = canManageUsers(role);
 
   return (
     <div className="flex min-h-screen items-stretch bg-sky-50">
@@ -53,19 +60,28 @@ export function AppShell({
           <div className="px-5 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Admin
           </div>
-          {ADMIN_NAV.map((item) => (
-            <NavLink key={item.href} href={item.href} active={pathname === item.href}>
-              {item.label}
-            </NavLink>
-          ))}
-          <div className="px-5 pb-2 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Users &amp; areas
-          </div>
-          {USERS_AREAS_NAV.map((item) => (
-            <NavLink key={item.href} href={item.href} active={pathname.startsWith(item.href)}>
-              {item.label}
-            </NavLink>
-          ))}
+          <NavLink href={DASHBOARD_NAV.href} active={pathname === DASHBOARD_NAV.href}>
+            {DASHBOARD_NAV.label}
+          </NavLink>
+          {showAdminNav
+            ? ADMIN_NAV.map((item) => (
+                <NavLink key={item.href} href={item.href} active={pathname === item.href}>
+                  {item.label}
+                </NavLink>
+              ))
+            : null}
+          {showUsersAreasNav ? (
+            <>
+              <div className="px-5 pb-2 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Users &amp; areas
+              </div>
+              {USERS_AREAS_NAV.map((item) => (
+                <NavLink key={item.href} href={item.href} active={pathname.startsWith(item.href)}>
+                  {item.label}
+                </NavLink>
+              ))}
+            </>
+          ) : null}
         </nav>
       ) : null}
 

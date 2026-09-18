@@ -33,6 +33,12 @@ export default async function UnitDetailPage({
   const { unitId } = await params;
   const { error, space_created, owner_added } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
+  const initialTab: "overview" | "spaces" | "owner" =
+    owner_added || error === "owner_create_failed" || error === "ownership_link_failed"
+      ? "owner"
+      : space_created || error === "space_create_failed"
+        ? "spaces"
+        : "overview";
 
   const supabase = await createClient();
   const { data: unit } = await supabase
@@ -289,7 +295,12 @@ export default async function UnitDetailPage({
         </Badge>
       </div>
 
-      <UnitDetailTabs overview={overviewContent} spaces={spacesContent} owner={ownerContent} />
+      <UnitDetailTabs
+        overview={overviewContent}
+        spaces={spacesContent}
+        owner={ownerContent}
+        initialTab={initialTab}
+      />
     </div>
   );
 }
