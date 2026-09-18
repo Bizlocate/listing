@@ -18,7 +18,7 @@ export default async function ContactRequestsPage() {
   const { data: requests } = await supabase
     .from("contact_requests")
     .select(
-      "id, status, reason, created_at, profiles(full_name), listings(units(jalan, unit_no, unit_code))",
+      "id, status, reason, created_at, profiles!contact_requests_requested_by_fkey(full_name), listings(units(jalan, unit_no, unit_code))",
     )
     .order("created_at", { ascending: false });
 

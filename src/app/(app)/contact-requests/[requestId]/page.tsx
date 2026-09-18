@@ -39,7 +39,7 @@ export default async function ContactRequestDetailPage({
   const { data: request } = await supabase
     .from("contact_requests")
     .select(
-      "id, status, reason, tenant_company, business_type, budget, move_in_date, remarks, created_at, profiles(full_name), listings(units(jalan, unit_no, unit_code, full_address))",
+      "id, status, reason, tenant_company, business_type, budget, move_in_date, remarks, created_at, profiles!contact_requests_requested_by_fkey(full_name), listings(units(jalan, unit_no, unit_code, full_address))",
     )
     .eq("id", requestId)
     .single();
