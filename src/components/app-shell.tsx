@@ -60,9 +60,11 @@ export function AppShell({
               ⟨
             </button>
           </div>
-          <div className="px-5 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Admin
-          </div>
+          {showAdminNav ? (
+            <div className="px-5 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Admin
+            </div>
+          ) : null}
           <NavLink href={DASHBOARD_NAV.href} active={pathname === DASHBOARD_NAV.href}>
             {DASHBOARD_NAV.label}
           </NavLink>
