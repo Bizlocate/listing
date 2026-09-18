@@ -3,6 +3,13 @@ import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
 import { canSeeAllAreas, getAdminAreaIds } from "@/lib/auth/get-admin-area-ids";
 import { verificationStatusLabel, contactStatusLabel } from "@/lib/owners/status-labels";
+import {
+  listingStatusLabel,
+  listingStatusTone,
+  listingTypeLabel,
+  type ListingStatus,
+  type ListingType,
+} from "@/lib/listings/status-labels";
 import { Badge } from "@/components/badge";
 import { UnitDetailTabs } from "@/components/unit-detail-tabs";
 import { createUnitSpace, createOwnerForUnit } from "./actions";
@@ -75,6 +82,12 @@ export default async function UnitDetailPage({
           .eq("unit_id", unitId)
       ).data
     : null;
+
+  const { data: listings } = await supabase
+    .from("listings")
+    .select("id, listing_type, asking_rental, listing_status, unit_spaces(floor_label)")
+    .eq("unit_id", unitId)
+    .order("created_at", { ascending: false });
 
   const overviewContent = (
     <>
@@ -271,6 +284,44 @@ export default async function UnitDetailPage({
     <p className="text-sm text-slate-600">Owner details are restricted to your assigned areas.</p>
   );
 
+  const listingsContent = (
+    <div className="space-y-4">
+      <div className="grid gap-3">
+        {(listings ?? []).map((l) => (
+          <a
+            key={l.id}
+            href={`/listings/${l.id}`}
+            className="flex items-center gap-3 rounded-xl bg-sky-50 px-4 py-3 hover:bg-sky-100"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-slate-900">
+                {/* @ts-expect-error -- Supabase nested select typing */}
+                {l.unit_spaces?.floor_label ?? "Whole unit"} · {listingTypeLabel(l.listing_type as ListingType)}
+              </p>
+              <p className="text-sm text-slate-600">
+                {l.asking_rental ? `RM ${Number(l.asking_rental).toLocaleString()}` : "No price set"}
+              </p>
+            </div>
+            <Badge tone={listingStatusTone(l.listing_status as ListingStatus)}>
+              {listingStatusLabel(l.listing_status as ListingStatus)}
+            </Badge>
+          </a>
+        ))}
+        {(listings ?? []).length === 0 ? (
+          <p className="text-sm text-slate-600">No listings yet.</p>
+        ) : null}
+      </div>
+      {canManage ? (
+        <a
+          href={`/listings/new?unitId=${unit.id}`}
+          className="inline-block rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700"
+        >
+          + New listing
+        </a>
+      ) : null}
+    </div>
+  );
+
   return (
     <div className="max-w-4xl space-y-5">
       <a className="text-sm text-sky-600" href="/units">
@@ -299,6 +350,7 @@ export default async function UnitDetailPage({
         overview={overviewContent}
         spaces={spacesContent}
         owner={ownerContent}
+        listings={listingsContent}
         initialTab={initialTab}
       />
     </div>
