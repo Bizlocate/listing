@@ -39,20 +39,20 @@ export default async function SearchPage({
       .from("available_listings")
       .select("id, jalan, unit_no, unit_code, full_address, sub_area_name, area_name, asking_rental")
       .or(`jalan.ilike.${pat},unit_no.ilike.${pat},unit_code.ilike.${pat},full_address.ilike.${pat}`)
-      .limit(LIMIT),
+      .order("unit_code").limit(LIMIT),
     isAdmin
       ? supabase
           .from("units")
           .select("id, unit_code, jalan, unit_no, full_address")
           .or(`unit_code.ilike.${pat},jalan.ilike.${pat},unit_no.ilike.${pat},full_address.ilike.${pat}`)
-          .limit(LIMIT)
+          .order("unit_code").limit(LIMIT)
       : null,
     isAdmin
       ? supabase
           .from("owners")
           .select("id, name, primary_contact, other_contact")
           .or(`name.ilike.${pat},primary_contact.ilike.${pat},other_contact.ilike.${pat}`)
-          .limit(LIMIT)
+          .order("name").limit(LIMIT)
       : null,
   ]);
 

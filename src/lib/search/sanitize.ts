@@ -1,5 +1,7 @@
-const SPECIAL = /[%_,()*"\`;]/g;
+// Strips PostgREST filter / LIKE specials (% _ , ( ) * " \ ` ;) and control characters.
+const SPECIAL = /[%_,()*"\\`;\p{C}]/gu;
 
 export function sanitizeSearchTerm(raw: string): string {
-  return raw.replace(SPECIAL, "").replace(/\s+/g, " ").trim().slice(0, 50).trim();
+  // Collapse whitespace first so tabs/newlines become spaces rather than being stripped as control chars.
+  return raw.replace(/\s+/g, " ").replace(SPECIAL, "").trim().slice(0, 50).trim();
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { canAccessAdminTools, canManageUsers, type Role } from "@/lib/auth/role";
@@ -45,9 +45,19 @@ export function AppShell({
   const pathname = usePathname();
   // mobileOpen is keyed to the pathname it was opened on, so navigating closes the drawer without an effect.
   const [openedAt, setOpenedAt] = useState<string | null>(null);
+  // Back/forward (or any pathname change) must never leave a stale "open" value that could reopen later.
+  if (openedAt !== null && openedAt !== pathname) setOpenedAt(null);
   const mobileOpen = openedAt === pathname;
   const [desktopHidden, setDesktopHidden] = useState(false);
   const closeMobile = () => setOpenedAt(null);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenedAt(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
   const showAdminNav = canAccessAdminTools(role);
   const showUsersAreasNav = canManageUsers(role);
 
@@ -57,8 +67,9 @@ export function AppShell({
         <div className="fixed inset-0 z-20 bg-slate-900/40 md:hidden" onClick={closeMobile} />
       ) : null}
       <nav
-        className={`fixed inset-y-0 left-0 z-30 flex w-60 flex-none flex-col overflow-auto border-r border-sky-100 bg-white pb-6 transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        id="app-nav"
+        className={`fixed inset-y-0 left-0 z-30 flex w-60 flex-none flex-col overflow-auto border-r border-sky-100 bg-white pb-6 transition-[transform,visibility] md:visible md:sticky md:top-0 md:h-screen md:translate-x-0 ${
+          mobileOpen ? "visible translate-x-0" : "invisible -translate-x-full"
         } ${desktopHidden ? "md:hidden" : ""}`}
       >
           <div className="flex items-center gap-2 px-4 pb-3 pt-5">
@@ -70,7 +81,8 @@ export function AppShell({
               type="button"
               onClick={() => {
                 closeMobile();
-                setDesktopHidden(true);
+                // Only hide the desktop sidebar when actually on a desktop-width viewport.
+                if (window.matchMedia("(min-width: 768px)").matches) setDesktopHidden(true);
               }}
               title="Hide menu"
               className="rounded p-1 text-slate-500 hover:bg-sky-50"
@@ -118,6 +130,8 @@ export function AppShell({
             type="button"
             onClick={() => setOpenedAt(pathname)}
             aria-label="Open menu"
+            aria-expanded={mobileOpen}
+            aria-controls="app-nav"
             className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 md:hidden"
           >
             ☰
@@ -142,9 +156,9 @@ export function AppShell({
             />
           </form>
           <div className="ml-auto flex flex-none items-center gap-2 md:gap-3">
-            <div className="text-sm leading-tight">
+            <div className="hidden text-sm leading-tight sm:block">
               <p className="max-w-[8rem] truncate font-semibold text-slate-900">{fullName}</p>
-              <p className="hidden text-slate-600 sm:block">{roleLabel}</p>
+              <p className="text-slate-600">{roleLabel}</p>
             </div>
             <form action={signOutAction}>
               <button
