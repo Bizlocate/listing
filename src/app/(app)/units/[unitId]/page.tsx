@@ -102,14 +102,19 @@ export default async function UnitDetailPage({
     .eq("unit_id", unitId)
     .order("created_at", { ascending: false });
 
-  const { data: activities, error: activitiesError } = await supabase
-    .from("activities")
-    .select("id, action, detail, created_at, profiles(full_name)")
-    .eq("unit_id", unitId)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  // Activities RLS returns zero rows (no error) for non-admins, so skip the query for them.
+  const { data: activities, error: activitiesError } = canManage
+    ? await supabase
+        .from("activities")
+        .select("id, action, detail, actor_id, created_at, profiles(full_name)")
+        .eq("unit_id", unitId)
+        .order("created_at", { ascending: false })
+        .limit(50)
+    : { data: null, error: null };
 
-  const timelineContent = (
+  const timelineContent = !canManage ? (
+    <p className="text-sm text-slate-600">Timeline is restricted to admins.</p>
+  ) : (
     <div>
       {activitiesError ? <p className="text-sm text-red-600">Could not load timeline: {activitiesError.message}</p> : null}
       <ol className="space-y-3">
@@ -118,7 +123,7 @@ export default async function UnitDetailPage({
             <p className="font-semibold text-slate-900">{describeActivity(a.action, a.detail)}</p>
             <p className="text-sm text-slate-600">
               {/* @ts-expect-error -- Supabase nested select typing */}
-              {a.profiles?.full_name ?? "System"} ·{" "}
+              {a.profiles?.full_name ?? (a.actor_id ? "Team member" : "System")} ·{" "}
               {new Date(a.created_at).toLocaleString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })}
             </p>
           </li>
