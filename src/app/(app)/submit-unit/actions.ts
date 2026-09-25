@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
+import { isObjectPathIn } from "@/lib/storage/upload";
 
 export async function createUnitSubmission(formData: FormData) {
   const actor = await getCurrentProfile();
@@ -21,7 +22,7 @@ export async function createUnitSubmission(formData: FormData) {
   const lngRaw = String(formData.get("lng") ?? "");
 
   const photoPathRaw = String(formData.get("photoPath") ?? "");
-  const photoPath = photoPathRaw.startsWith(`${actor.id}/`) && !photoPathRaw.includes("..") ?photoPathRaw : null;
+  const photoPath = isObjectPathIn(actor.id, photoPathRaw) ? photoPathRaw : null;
 
   const supabase = await createClient();
 

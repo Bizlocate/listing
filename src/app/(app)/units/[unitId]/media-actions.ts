@@ -4,15 +4,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
+import { isObjectPathIn } from "@/lib/storage/upload";
 
 const PHOTO_TYPES = ["cover", "property", "banner"];
 const DOC_TYPES = ["ic", "hakmilik", "other"];
-const UUID = /^[0-9a-fA-F-]{36}$/;
-
-// Path must be exactly <unitId>/<uuid>.<ext> (as built by buildStoragePath); rejects ../ tricks.
-function isValidPath(unitId: string, path: string) {
-  return UUID.test(unitId) && new RegExp(`^${unitId}/[0-9a-fA-F-]{36}\\.[a-z0-9]{1,5}$`).test(path);
-}
 
 async function requireAdmin() {
   const actor = await getCurrentProfile();
@@ -24,7 +19,7 @@ async function requireAdmin() {
 
 export async function recordUnitPhoto(unitId: string, path: string, photoType: string): Promise<{ error?: string }> {
   const actor = await requireAdmin();
-  if (!isValidPath(unitId, path) || !PHOTO_TYPES.includes(photoType)) {
+  if (!isObjectPathIn(unitId, path) || !PHOTO_TYPES.includes(photoType)) {
     return { error: "Invalid upload." };
   }
   const supabase = await createClient();
@@ -38,7 +33,7 @@ export async function recordUnitPhoto(unitId: string, path: string, photoType: s
 
 export async function recordUnitDocument(unitId: string, path: string, docType: string): Promise<{ error?: string }> {
   const actor = await requireAdmin();
-  if (!isValidPath(unitId, path) || !DOC_TYPES.includes(docType)) {
+  if (!isObjectPathIn(unitId, path) || !DOC_TYPES.includes(docType)) {
     return { error: "Invalid upload." };
   }
   const supabase = await createClient();
@@ -72,6 +67,8 @@ async function deleteMedia(
     .maybeSingle();
   if (selectError) redirect(failed);
   if (!row) redirect(back);
+  // Keep the storage DELETE predicate equal to the row's: an empty remove() then means "already gone".
+  if (!row.url.startsWith(`${unitId}/`)) redirect(failed);
 
   const { error: removeError } = await supabase.storage.from(bucket).remove([row.url]);
   if (removeError) redirect(failed);

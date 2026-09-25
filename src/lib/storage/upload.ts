@@ -23,3 +23,10 @@ export function buildStoragePath(prefix: string, filename: string, id: string): 
   const ext = match ? match[1].toLowerCase() : "bin";
   return `${prefix}/${id}.${ext}`;
 }
+
+const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
+
+// Path must be exactly <folder>/<uuid>.<ext> as built by buildStoragePath (folder = unit id or auth uid).
+export function isObjectPathIn(folder: string, path: string): boolean {
+  return new RegExp(`^${UUID}$`).test(folder) && new RegExp(`^${folder}/${UUID}\\.[a-z0-9]{1,5}$`).test(path);
+}

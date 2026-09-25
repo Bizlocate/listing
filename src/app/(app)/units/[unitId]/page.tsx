@@ -154,7 +154,7 @@ export default async function UnitDetailPage({
         .from("unit-documents")
         .createSignedUrls(
           documents.map((d) => d.url),
-          3600,
+          300,
         );
       if (signError) documentsError = signError.message;
       for (const s of signed ?? []) {
@@ -186,6 +186,7 @@ export default async function UnitDetailPage({
 
   const overviewContent = (
     <>
+      {deleteError ? <p className="mb-4 text-sm text-red-600">{deleteError}</p> : null}
       <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
         <Field label="Facing" value={unit.facing} />
         <Field label="Property type" value={unit.property_type} />
@@ -202,7 +203,6 @@ export default async function UnitDetailPage({
       <p className="mt-4 text-sm text-slate-600">{unit.remarks ?? "No remarks."}</p>
 
       <section className="mt-6 space-y-3">
-        {deleteError ? <p className="text-sm text-red-600">{deleteError}</p> : null}
         <h3 className="font-medium text-slate-900">Photos</h3>
         {photosError ? <p className="text-sm text-red-600">Could not load photos: {photosError.message}</p> : null}
         {photoUrlsError ? <p className="text-sm text-red-600">Could not load photo images: {photoUrlsError}</p> : null}
@@ -243,7 +243,6 @@ export default async function UnitDetailPage({
       {canManage ? (
         <section className="mt-6 space-y-3">
           <h3 className="font-medium text-slate-900">Documents · admin only</h3>
-          {deleteError ? <p className="text-sm text-red-600">{deleteError}</p> : null}
           {documentsError ? <p className="text-sm text-red-600">Could not load documents: {documentsError}</p> : null}
           <ul className="space-y-2">
             {documents.map((d) => (

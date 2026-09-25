@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateUpload, buildStoragePath, PHOTO_MAX_BYTES, DOCUMENT_MAX_BYTES } from "./upload";
+import { validateUpload, buildStoragePath, isObjectPathIn, PHOTO_MAX_BYTES, DOCUMENT_MAX_BYTES } from "./upload";
 
 describe("validateUpload", () => {
   it("accepts jpeg/png/webp photos within the limit", () => {
@@ -35,5 +35,16 @@ describe("buildStoragePath", () => {
     expect(buildStoragePath("u", "noext", "abc")).toBe("u/abc.bin");
     expect(buildStoragePath("u", "evil.p/hp", "abc")).toBe("u/abc.bin");
     expect(buildStoragePath("u", "x.averyveryverylongextension", "abc")).toBe("u/abc.bin");
+  });
+});
+
+describe("isObjectPathIn", () => {
+  it("isObjectPathIn rejects traversal and foreign folders", () => {
+    const f = "11111111-1111-1111-1111-111111111111", id = "22222222-2222-4222-8222-222222222222";
+    expect(isObjectPathIn(f, `${f}/${id}.jpg`)).toBe(true);
+    expect(isObjectPathIn(f, `${f}/%2e%2e/%2e%2e/auth/v1/logout`)).toBe(false);
+    expect(isObjectPathIn(f, `${f}/../x/${id}.jpg`)).toBe(false);
+    expect(isObjectPathIn(f, `33333333-3333-3333-3333-333333333333/${id}.jpg`)).toBe(false);
+    expect(isObjectPathIn("not-a-uuid", "not-a-uuid/x.jpg")).toBe(false);
   });
 });

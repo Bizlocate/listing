@@ -20,12 +20,14 @@ export function FileUploader({
   kind,
   label,
   onUploaded,
+  onBusyChange,
 }: {
   bucket: string;
   prefix: string;
   kind: UploadKind;
   label: string;
   onUploaded: (path: string) => Promise<{ error?: string } | void>;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const [state, setState] = useState<"idle" | "uploading" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -43,6 +45,7 @@ export function FileUploader({
       return;
     }
 
+    onBusyChange?.(true);
     setState("uploading");
     setMessage("");
     const supabase = createClient();
@@ -76,6 +79,7 @@ export function FileUploader({
         // nothing more we can do client-side
       }
     }
+    onBusyChange?.(false);
     setState(failure ? "error" : "idle");
     setMessage(failure ?? "");
     input.value = "";

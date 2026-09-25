@@ -142,7 +142,7 @@ export default async function SubmitUnitPage({
         <SubmissionPhotoField userId={profile.id} />
         <button
           type="submit"
-          className="w-full rounded-md bg-sky-600 px-4 py-2 text-base font-medium text-white hover:bg-sky-700"
+          className="w-full rounded-md bg-sky-600 px-4 py-2 text-base font-medium text-white hover:bg-sky-700 disabled:opacity-50"
         >
           Submit
         </button>

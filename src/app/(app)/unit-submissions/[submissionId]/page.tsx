@@ -49,9 +49,9 @@ export default async function UnitSubmissionDetailPage({
   if (submission.photo_url) {
     const { data: signed, error: signError } = await supabase.storage
       .from("submission-photos")
-      .createSignedUrl(submission.photo_url, 3600);
+      .createSignedUrls([submission.photo_url], 3600);
     if (signError) photoError = signError.message;
-    photoSignedUrl = signed?.signedUrl ?? null;
+    photoSignedUrl = signed?.[0]?.signedUrl ?? null;
   }
 
   let candidates: {
