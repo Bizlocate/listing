@@ -11,7 +11,7 @@ import {
   type StatusReportType,
   type StatusReportStatus,
 } from "@/lib/status-reports/labels";
-import { listingStatusLabel } from "@/lib/listings/status-labels";
+import { listingStatusLabel, type ListingStatus } from "@/lib/listings/status-labels";
 import { confirmStatusReport, rejectStatusReport } from "./actions";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -36,13 +36,24 @@ export default async function StatusReportDetailPage({
   const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
 
   const supabase = await createClient();
-  const { data: report } = await supabase
+  const { data: report, error: queryError } = await supabase
     .from("listing_status_reports")
     .select(
       "id, listing_id, report_type, remarks, status, profiles!listing_status_reports_reported_by_fkey(full_name), listings(listing_status, units(jalan, unit_no, unit_code))",
     )
     .eq("id", reportId)
     .single();
+
+  if (queryError && queryError.code !== "PGRST116") {
+    return (
+      <div className="max-w-2xl space-y-5">
+        <Link className="text-sm text-sky-600" href="/status-reports">
+          ← Status reports
+        </Link>
+        <p className="text-sm text-red-600">Could not load this report. Please try again.</p>
+      </div>
+    );
+  }
 
   if (!report) {
     notFound();
@@ -77,7 +88,7 @@ export default async function StatusReportDetailPage({
         </p>
         <p className="text-sm text-slate-600">
           {/* @ts-expect-error -- Supabase nested select typing */}
-          Reported by {report.profiles?.full_name} · listing is currently {report.listings?.listing_status}
+          Reported by {report.profiles?.full_name} · listing is currently {listingStatusLabel(report.listings?.listing_status as ListingStatus)}
         </p>
         <p className="mt-3 text-slate-900">{report.remarks ?? "No remarks."}</p>
 

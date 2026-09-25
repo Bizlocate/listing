@@ -187,7 +187,10 @@ export default async function AvailableListingDetailPage({
           <label className="text-sm text-slate-700" htmlFor="reportType">
             What did you find?
           </label>
-          <select id="reportType" name="reportType" className={FIELD_CLASSES} defaultValue="still_available">
+          <select id="reportType" name="reportType" className={FIELD_CLASSES} defaultValue="" required>
+            <option value="" disabled>
+              Select…
+            </option>
             {STATUS_REPORT_TYPES.map((t) => (
               <option key={t} value={t}>
                 {statusReportTypeLabel(t as StatusReportType)}

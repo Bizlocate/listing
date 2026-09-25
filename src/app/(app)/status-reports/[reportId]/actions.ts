@@ -33,8 +33,12 @@ export async function confirmStatusReport(formData: FormData) {
     if (effect.listingStatus) patch.listing_status = effect.listingStatus;
     if (effect.touchVerified) patch.last_verified_date = todayInMalaysia();
 
-    const { error } = await supabase.from("listings").update(patch).eq("id", claimed.listing_id);
-    if (error) {
+    const { data: updated, error } = await supabase
+      .from("listings")
+      .update(patch)
+      .eq("id", claimed.listing_id)
+      .select("id");
+    if (error || !updated?.length) {
       redirect(`/status-reports/${reportId}?error=apply_failed`);
     }
   }
