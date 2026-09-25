@@ -13,14 +13,14 @@
 - Spec: "Every step -> activities row (unit timeline) + audit_logs row where sensitive/critical (owner created/changed, contact approved, status changed, permission changed, etc.)". `activities` = admin-browsable timeline; `audit_logs` = immutable, super_admin only (existing RLS: `audit_logs_select_super_admin`, no update/delete policy).
 - Existing schema (already deployed): `activities(id, entity_type text not null, entity_id uuid not null, action text not null, actor_id uuid → profiles, created_at)`, `audit_logs(id, action text not null, user_id → profiles, entity_type text not null, entity_id uuid, previous_value jsonb, new_value jsonb, created_at)`. RLS: `activities_select_admin` (super_admin or role area_admin), `audit_logs_select_super_admin`. Nothing in `src/` writes to either table today (verified by grep).
 - The migration adds two columns to `activities`: `unit_id uuid` (deliberately **no foreign key**, so history survives if a unit is ever deleted) and `detail text`.
-- `profiles_select` currently lets an area_admin see only their own profile row, so actor names (and reporter/requester names on `/contact-requests`, `/status-reports`) come back blank for area admins. The migration widens it to `id = auth.uid() or is_super_admin() or current_role() = 'area_admin'` (admins can read all profiles; SPs still only their own). Implementer: confirm from `supabase/migrations/0001_phase1_schema.sql` that `profiles` holds no sensitive columns beyond id/full_name/role/created_at before keeping this; if it does, drop this one statement and report.
+- `profiles_select` is deliberately **NOT** widened: `profiles` also holds `phone` and `status`, so letting area_admins read every row would expose more than names. Consequence: area admins see "Team member" as the actor on the timeline by design (likewise requester/reporter names on `/contact-requests`, `/status-reports`) until a safe name-lookup exists (e.g. a security-definer function returning id + full_name only).
 - **Blast radius warning:** these triggers fire on writes to core tables. A bug in trigger SQL would make unit/listing/owner writes fail. The SQL below was written against the actual column names; the reviewer must verify every `r->>'column'` exists on the table it applies to. The controller will exercise create/update flows in the browser immediately after the user runs the migration.
 - PostgREST lesson: `activities.actor_id` and `audit_logs.user_id` each have a single FK to `profiles`, so the bare `profiles(full_name)` embed is unambiguous here. Surface query `error` on any new list page instead of ignoring it.
 
 ## Global Constraints
 
 - Action strings are `<table>.<insert|update|delete>` (e.g. `listings.update`); status transitions put `old -> new` (ASCII arrow) in `detail`; access-log revocation puts `revoked` in `detail`.
-- No-op updates (row unchanged) log nothing. `profiles` updates are audited only when `role` changed; `listings`, `contact_requests`, `listing_status_reports` updates are audited only when their status changed.
+- No-op updates (row unchanged) log nothing. `profiles` updates are audited only when `role` or `status` changed; `listings`, `contact_requests`, `listing_status_reports` updates are audited only when their status changed.
 - Timestamps displayed in `Asia/Kuala_Lumpur`.
 - Light theme, white background, sky-blue accents.
 
@@ -65,7 +65,7 @@ describe("describeActivity", () => {
     expect(describeActivity("contact_access_logs.insert", null)).toBe("Owner contact access granted");
     expect(describeActivity("listing_status_reports.insert", null)).toBe("Status reported");
     expect(describeActivity("owners.update", null)).toBe("Owner updated");
-    expect(describeActivity("profiles.update", null)).toBe("User role changed");
+    expect(describeActivity("profiles.update", null)).toBe("User role/status changed");
     expect(describeActivity("area_admins.insert", null)).toBe("Area admin assigned");
   });
 
@@ -138,7 +138,7 @@ const LABELS: Record<string, string> = {
   "owners.update": "Owner updated",
   "owners.delete": "Owner deleted",
   "profiles.insert": "User created",
-  "profiles.update": "User role changed",
+  "profiles.update": "User role/status changed",
   "area_admins.insert": "Area admin assigned",
   "area_admins.delete": "Area admin removed",
 };
@@ -193,10 +193,8 @@ create index on public.activities (unit_id, created_at desc);
 drop policy "activities_insert_self" on public.activities;
 drop policy "audit_logs_insert_self" on public.audit_logs;
 
--- admins need to see names of other users (timeline actor, requester, reporter)
-drop policy "profiles_select" on public.profiles;
-create policy "profiles_select" on public.profiles for select
-  using (id = auth.uid() or public.is_super_admin() or public.current_role() = 'area_admin');
+-- NOTE: profiles_select is intentionally NOT widened (profiles holds phone/status).
+-- Area admins see "Team member" as actor until a safe name-lookup exists.
 
 create or replace function public.log_activity()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -249,7 +247,8 @@ declare
 begin
   if tg_op = 'UPDATE' then
     if n = o then return null; end if;
-    if tg_table_name = 'profiles' and o->>'role' is not distinct from n->>'role' then return null; end if;
+    if tg_table_name = 'profiles' and o->>'role' is not distinct from n->>'role'
+       and o->>'status' is not distinct from n->>'status' then return null; end if;
     if tg_table_name = 'listings' and o->>'listing_status' is not distinct from n->>'listing_status' then return null; end if;
     if tg_table_name in ('contact_requests', 'listing_status_reports')
        and o->>'status' is not distinct from n->>'status' then return null; end if;
@@ -459,11 +458,12 @@ git commit -m "feat: add super admin audit log page"
 
 ## Manual Verification (controller-driven, after the user runs 0008)
 
+0. Right after running 0008, run `supabase/tests/0008_smoke_test.sql` in the SQL Editor; it expects a "SMOKE OK" error (raised deliberately so everything rolls back). If anything is wrong, `supabase/tests/0008_rollback_triggers.sql` removes the triggers. Then run `supabase/migrations/0009_lock_profile_role_and_status.sql` (security fix: pins `role`/`status` on profile self-update; super_admin can still change them).
 1. Immediately after 0008: create a space on a unit, update a listing status, add an owner — confirm none of these writes error (trigger blast-radius check).
-2. Open that unit's Timeline tab — confirm entries appear with correct labels, actor name, Malaysia time, and `old -> new` detail for the status change.
+2. Open that unit's Timeline tab — confirm entries appear with correct labels, actor name, Malaysia time, and `old -> new` detail for the status change. If Timeline shows `column activities.unit_id does not exist`, PostgREST's schema cache is stale: run `notify pgrst, 'reload schema';` in the SQL Editor.
 3. `/admin/audit-log` (super_admin): confirm owner insert, listing status change appear with a "Changed:" line on updates; confirm no entry for a plain non-status listing edit.
-4. Verify over REST as the test admin that a direct `POST /rest/v1/activities` and `/audit_logs` insert is now rejected (RLS), and `GET /rest/v1/profiles` still works.
-5. Confirm area-admin-visible names are no longer blank (profiles policy) if an area_admin session is available; otherwise verify the policy text only.
+4. Verify over REST as the test admin that a direct `POST /rest/v1/activities` and `/audit_logs` insert is now rejected: expect HTTP 401/403 (Postgres error 42501, RLS violation), and `GET /rest/v1/profiles` still works.
+5. After 0009: as a non-super-admin, `PATCH /rest/v1/profiles?id=eq.<own id>` with `{"role":"super_admin"}` must be rejected; changing `full_name`/`phone` must still work.
 
 ## Self-Review Notes
 

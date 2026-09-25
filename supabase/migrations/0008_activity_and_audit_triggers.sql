@@ -67,7 +67,8 @@ declare
 begin
   if tg_op = 'UPDATE' then
     if n = o then return null; end if;
-    if tg_table_name = 'profiles' and o->>'role' is not distinct from n->>'role' then return null; end if;
+    if tg_table_name = 'profiles' and o->>'role' is not distinct from n->>'role'
+       and o->>'status' is not distinct from n->>'status' then return null; end if;
     if tg_table_name = 'listings' and o->>'listing_status' is not distinct from n->>'listing_status' then return null; end if;
     if tg_table_name in ('contact_requests', 'listing_status_reports')
        and o->>'status' is not distinct from n->>'status' then return null; end if;

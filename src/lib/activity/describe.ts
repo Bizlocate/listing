@@ -26,7 +26,7 @@ const LABELS: Record<string, string> = {
   "owners.update": "Owner updated",
   "owners.delete": "Owner deleted",
   "profiles.insert": "User created",
-  "profiles.update": "User role changed",
+  "profiles.update": "User role/status changed",
   "area_admins.insert": "Area admin assigned",
   "area_admins.delete": "Area admin removed",
 };

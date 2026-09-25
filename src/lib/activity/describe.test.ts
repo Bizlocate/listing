@@ -11,7 +11,7 @@ describe("describeActivity", () => {
     expect(describeActivity("contact_access_logs.insert", null)).toBe("Owner contact access granted");
     expect(describeActivity("listing_status_reports.insert", null)).toBe("Status reported");
     expect(describeActivity("owners.update", null)).toBe("Owner updated");
-    expect(describeActivity("profiles.update", null)).toBe("User role changed");
+    expect(describeActivity("profiles.update", null)).toBe("User role/status changed");
     expect(describeActivity("area_admins.insert", null)).toBe("Area admin assigned");
   });
 
