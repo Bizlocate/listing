@@ -46,5 +46,7 @@ describe("isObjectPathIn", () => {
     expect(isObjectPathIn(f, `${f}/../x/${id}.jpg`)).toBe(false);
     expect(isObjectPathIn(f, `33333333-3333-3333-3333-333333333333/${id}.jpg`)).toBe(false);
     expect(isObjectPathIn("not-a-uuid", "not-a-uuid/x.jpg")).toBe(false);
+    const upper = "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA";
+    expect(isObjectPathIn(upper, `${upper}/${id}.jpg`)).toBe(false);
   });
 });

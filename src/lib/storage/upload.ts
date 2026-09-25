@@ -24,7 +24,7 @@ export function buildStoragePath(prefix: string, filename: string, id: string): 
   return `${prefix}/${id}.${ext}`;
 }
 
-const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 
 // Path must be exactly <folder>/<uuid>.<ext> as built by buildStoragePath (folder = unit id or auth uid).
 export function isObjectPathIn(folder: string, path: string): boolean {

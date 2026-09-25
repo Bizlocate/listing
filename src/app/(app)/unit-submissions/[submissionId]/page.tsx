@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
+import { isObjectPathIn } from "@/lib/storage/upload";
 import { findDuplicateCandidates } from "@/lib/units/duplicate-detection";
 import { linkSubmissionToUnit, createUnitFromSubmission } from "./actions";
 
@@ -35,7 +36,7 @@ export default async function UnitSubmissionDetailPage({
   const { data: submission } = await supabase
     .from("unit_submissions")
     .select(
-      "id, sub_area_id, jalan, unit_no, address, discovery_type, banner_phone, remarks, status, photo_url, sub_areas(name, areas(name))",
+      "id, sub_area_id, jalan, unit_no, address, discovery_type, banner_phone, remarks, status, photo_url, submitted_by, sub_areas(name, areas(name))",
     )
     .eq("id", submissionId)
     .single();
@@ -46,7 +47,9 @@ export default async function UnitSubmissionDetailPage({
 
   let photoSignedUrl: string | null = null;
   let photoError: string | null = null;
-  if (submission.photo_url) {
+  const photoPathValid =
+    !!submission.photo_url && !!submission.submitted_by && isObjectPathIn(submission.submitted_by, submission.photo_url);
+  if (photoPathValid && submission.photo_url) {
     const { data: signed, error: signError } = await supabase.storage
       .from("submission-photos")
       .createSignedUrls([submission.photo_url], 3600);
@@ -106,7 +109,8 @@ export default async function UnitSubmissionDetailPage({
           {submission.banner_phone ? ` · Banner phone: ${submission.banner_phone}` : ""}
         </p>
         {submission.remarks ? <p className="mt-1 text-sm text-slate-600">{submission.remarks}</p> : null}
-        {photoError ? <p className="mt-2 text-sm text-red-600">Could not load photo: {photoError}</p> : null}
+        {submission.photo_url && !photoPathValid ? <p className="mt-2 text-sm text-slate-500">Photo unavailable.</p> : null}
+        {photoError ?<p className="mt-2 text-sm text-red-600">Could not load photo: {photoError}</p> : null}
         {photoSignedUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
