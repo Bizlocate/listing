@@ -13,7 +13,11 @@ import {
 import { describeActivity } from "@/lib/activity/describe";
 import { Badge } from "@/components/badge";
 import { UnitDetailTabs } from "@/components/unit-detail-tabs";
+import { UnitPhotoUploader, UnitDocumentUploader } from "@/components/unit-media-uploaders";
 import { createUnitSpace, createOwnerForUnit } from "./actions";
+import { deleteUnitPhoto, deleteUnitDocument } from "./media-actions";
+
+const DOC_TYPE_LABELS: Record<string, string> = { ic: "IC", hakmilik: "Hakmilik", other: "Other" };
 
 const ERROR_MESSAGES: Record<string, string> = {
   space_create_failed: "Could not add space. Check the details and try again.",
@@ -112,6 +116,52 @@ export default async function UnitDetailPage({
         .limit(50)
     : { data: null, error: null };
 
+  const { data: photos, error: photosError } = await supabase
+    .from("unit_photos")
+    .select("id, url, photo_type")
+    .eq("unit_id", unitId)
+    .order("created_at", { ascending: false });
+
+  const photoUrls = new Map<string, string>();
+  let photoUrlsError: string | null = null;
+  if (photos && photos.length > 0) {
+    const { data: signed, error: signError } = await supabase.storage
+      .from("unit-photos")
+      .createSignedUrls(
+        photos.map((p) => p.url),
+        3600,
+      );
+    if (signError) photoUrlsError = signError.message;
+    for (const s of signed ?? []) {
+      if (s.path && s.signedUrl) photoUrls.set(s.path, s.signedUrl);
+    }
+  }
+
+  // Documents are admin-only: skip both the query and signed URLs for everyone else.
+  let documents: { id: string; url: string; doc_type: string }[] = [];
+  let documentsError: string | null = null;
+  const documentUrls = new Map<string, string>();
+  if (canManage) {
+    const { data: docs, error: docsError } = await supabase
+      .from("unit_documents")
+      .select("id, url, doc_type")
+      .eq("unit_id", unitId);
+    if (docsError) documentsError = docsError.message;
+    documents = docs ?? [];
+    if (documents.length > 0) {
+      const { data: signed, error: signError } = await supabase.storage
+        .from("unit-documents")
+        .createSignedUrls(
+          documents.map((d) => d.url),
+          3600,
+        );
+      if (signError) documentsError = signError.message;
+      for (const s of signed ?? []) {
+        if (s.path && s.signedUrl) documentUrls.set(s.path, s.signedUrl);
+      }
+    }
+  }
+
   const timelineContent = !canManage ? (
     <p className="text-sm text-slate-600">Timeline is restricted to admins.</p>
   ) : (
@@ -149,6 +199,80 @@ export default async function UnitDetailPage({
         />
       </div>
       <p className="mt-4 text-sm text-slate-600">{unit.remarks ?? "No remarks."}</p>
+
+      <section className="mt-6 space-y-3">
+        <h3 className="font-medium text-slate-900">Photos</h3>
+        {photosError ? <p className="text-sm text-red-600">Could not load photos: {photosError.message}</p> : null}
+        {photoUrlsError ? <p className="text-sm text-red-600">Could not load photo images: {photoUrlsError}</p> : null}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {(photos ?? []).map((p) => (
+            <div key={p.id} className="space-y-1">
+              {photoUrls.get(p.url) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoUrls.get(p.url)}
+                  alt={`${p.photo_type} photo of ${unit.unit_code}`}
+                  className="h-32 w-full rounded-lg object-cover"
+                />
+              ) : (
+                <div className="flex h-32 w-full items-center justify-center rounded-lg bg-slate-100 text-sm text-slate-500">
+                  Unavailable
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-2">
+                <Badge tone="neutral">{p.photo_type}</Badge>
+                {canManage ? (
+                  <form action={deleteUnitPhoto}>
+                    <input type="hidden" name="unitId" value={unit.id} />
+                    <input type="hidden" name="photoId" value={p.id} />
+                    <button type="submit" className="text-sm text-red-600 hover:underline">
+                      Delete
+                    </button>
+                  </form>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+        {!photosError && (photos ?? []).length === 0 ? <p className="text-sm text-slate-600">No photos yet.</p> : null}
+        {canManage ? <UnitPhotoUploader unitId={unit.id} /> : null}
+      </section>
+
+      {canManage ? (
+        <section className="mt-6 space-y-3">
+          <h3 className="font-medium text-slate-900">Documents · admin only</h3>
+          {documentsError ? <p className="text-sm text-red-600">Could not load documents: {documentsError}</p> : null}
+          <ul className="space-y-2">
+            {documents.map((d) => (
+              <li key={d.id} className="flex items-center gap-3 rounded-xl bg-sky-50 px-4 py-2">
+                {documentUrls.get(d.url) ? (
+                  <a
+                    href={documentUrls.get(d.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="min-w-0 flex-1 truncate font-semibold text-sky-700"
+                  >
+                    {DOC_TYPE_LABELS[d.doc_type] ?? d.doc_type}
+                  </a>
+                ) : (
+                  <span className="min-w-0 flex-1 truncate text-slate-500">
+                    {DOC_TYPE_LABELS[d.doc_type] ?? d.doc_type} (unavailable)
+                  </span>
+                )}
+                <form action={deleteUnitDocument}>
+                  <input type="hidden" name="unitId" value={unit.id} />
+                  <input type="hidden" name="documentId" value={d.id} />
+                  <button type="submit" className="text-sm text-red-600 hover:underline">
+                    Delete
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+          {!documentsError && documents.length === 0 ? <p className="text-sm text-slate-600">No documents yet.</p> : null}
+          <UnitDocumentUploader unitId={unit.id} />
+        </section>
+      ) : null}
     </>
   );
 
