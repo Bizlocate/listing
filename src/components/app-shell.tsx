@@ -26,6 +26,7 @@ const ADMIN_NAV = [
 const USERS_AREAS_NAV = [
   { href: "/admin/areas", label: "Areas" },
   { href: "/admin/users", label: "Users" },
+  { href: "/admin/audit-log", label: "Audit log" },
 ];
 
 export function AppShell({
