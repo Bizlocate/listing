@@ -10,10 +10,12 @@ import {
   contactRequestStatusTone,
   type ContactRequestReason,
 } from "@/lib/contact-requests/labels";
-import { requestOwnerContact } from "./actions";
+import { STATUS_REPORT_TYPES, statusReportTypeLabel, type StatusReportType } from "@/lib/status-reports/labels";
+import { requestOwnerContact, submitStatusReport } from "./actions";
 
 const ERROR_MESSAGES: Record<string, string> = {
   request_failed: "Could not send request. Try again.",
+  report_failed: "Could not send report. Try again.",
 };
 
 const FIELD_CLASSES =
@@ -24,7 +26,7 @@ export default async function AvailableListingDetailPage({
   searchParams,
 }: {
   params: Promise<{ listingId: string }>;
-  searchParams: Promise<{ error?: string; requested?: string }>;
+  searchParams: Promise<{ error?: string; requested?: string; reported?: string }>;
 }) {
   const profile = await getCurrentProfile();
   if (!profile) {
@@ -32,7 +34,7 @@ export default async function AvailableListingDetailPage({
   }
 
   const { listingId } = await params;
-  const { error, requested } = await searchParams;
+  const { error, requested, reported } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
 
   const supabase = await createClient();
@@ -116,7 +118,9 @@ export default async function AvailableListingDetailPage({
             {requested ? (
               <p className="mt-2 text-sm text-sky-700">Request sent.</p>
             ) : null}
-            {errorMessage ? <p className="mt-2 text-sm text-red-600">{errorMessage}</p> : null}
+            {error === "request_failed" && errorMessage ? (
+              <p className="mt-2 text-sm text-red-600">{errorMessage}</p>
+            ) : null}
 
             <form action={requestOwnerContact} className="mt-3 space-y-3">
               <input type="hidden" name="listingId" value={listing.id} />
@@ -168,6 +172,42 @@ export default async function AvailableListingDetailPage({
           </>
         )}
       </div>
+
+      <form
+        action={submitStatusReport}
+        className="space-y-3 rounded-2xl border border-sky-100 bg-white p-5 shadow-sm"
+      >
+        <input type="hidden" name="listingId" value={listing.id} />
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Report status
+        </div>
+        {reported ? <p className="text-sm text-sky-700">Report sent — an admin will review it.</p> : null}
+        {error === "report_failed" && errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
+        <div className="space-y-1">
+          <label className="text-sm text-slate-700" htmlFor="reportType">
+            What did you find?
+          </label>
+          <select id="reportType" name="reportType" className={FIELD_CLASSES} defaultValue="still_available">
+            {STATUS_REPORT_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {statusReportTypeLabel(t as StatusReportType)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm text-slate-700" htmlFor="reportRemarks">
+            Remarks
+          </label>
+          <textarea id="reportRemarks" name="remarks" className={FIELD_CLASSES} />
+        </div>
+        <button
+          type="submit"
+          className="w-full rounded-md bg-sky-600 px-4 py-2 text-base font-medium text-white hover:bg-sky-700"
+        >
+          Send report
+        </button>
+      </form>
     </div>
   );
 }

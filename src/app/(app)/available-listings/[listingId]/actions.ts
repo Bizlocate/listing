@@ -36,3 +36,28 @@ export async function requestOwnerContact(formData: FormData) {
 
   redirect(`/available-listings/${listingId}?requested=1`);
 }
+
+export async function submitStatusReport(formData: FormData) {
+  const profile = await getCurrentProfile();
+  if (!profile) {
+    redirect("/login");
+  }
+
+  const listingId = String(formData.get("listingId"));
+  const reportType = String(formData.get("reportType"));
+  const remarks = String(formData.get("remarks") ?? "");
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("listing_status_reports").insert({
+    listing_id: listingId,
+    reported_by: profile.id,
+    report_type: reportType,
+    remarks: remarks || null,
+  });
+
+  if (error) {
+    redirect(`/available-listings/${listingId}?error=report_failed`);
+  }
+
+  redirect(`/available-listings/${listingId}?reported=1`);
+}
