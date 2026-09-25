@@ -2,16 +2,13 @@ import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
 import { todayInMalaysia } from "@/lib/owners/today-my";
-import {
-  isOwnerSearchTaskOpen,
-  type OwnerSearchTaskStatus,
-} from "@/lib/owner-search/status-labels";
+import { OWNER_SEARCH_STATUSES, isOwnerSearchTaskOpen } from "@/lib/owner-search/status-labels";
 import {
   contactRequestReasonLabel,
   type ContactRequestReason,
 } from "@/lib/contact-requests/labels";
 import { statusReportTypeLabel, type StatusReportType } from "@/lib/status-reports/labels";
-import { isAging, timeAgo } from "@/lib/dashboard/helpers";
+import { isAging, nowMs, timeAgo } from "@/lib/dashboard/helpers";
 
 type QueueItem = {
   key: string;
@@ -21,6 +18,8 @@ type QueueItem = {
   href: string;
   action: string;
 };
+const OPEN_OWNER_SEARCH_STATUSES = OWNER_SEARCH_STATUSES.filter(isOwnerSearchTaskOpen);
+const QUEUE_LIMIT = 8;
 type UnitRef = { jalan: string | null; unit_no: string | null } | null | undefined;
 
 function unitLabel(unit: UnitRef): string {
@@ -55,21 +54,37 @@ export default async function HomePage() {
   }
 
   const supabase = await createClient();
+  const newest = { ascending: false } as const;
   const [available, ownerSearch, requests, reports, submissions] = await Promise.all([
+    // ponytail: 1000-row PostgREST cap; switch to a SQL count if available listings ever approach it
     supabase
       .from("listings")
-      .select("id, last_verified_date, created_at")
+      .select("id, last_verified_date, created_at", { count: "exact" })
       .eq("listing_status", "available"),
-    supabase.from("owner_search_tasks").select("id, status, created_at, units(jalan, unit_no)"),
+    supabase
+      .from("owner_search_tasks")
+      .select("id, created_at, units(jalan, unit_no)", { count: "exact" })
+      .in("status", OPEN_OWNER_SEARCH_STATUSES)
+      .order("created_at", newest)
+      .limit(QUEUE_LIMIT),
     supabase
       .from("contact_requests")
-      .select("id, reason, created_at, listings(units(jalan, unit_no))")
-      .eq("status", "pending"),
+      .select("id, reason, created_at, listings(units(jalan, unit_no))", { count: "exact" })
+      .eq("status", "pending")
+      .order("created_at", newest)
+      .limit(QUEUE_LIMIT),
     supabase
       .from("listing_status_reports")
-      .select("id, report_type, created_at, listings(units(jalan, unit_no))")
-      .eq("status", "pending_review"),
-    supabase.from("unit_submissions").select("id, address, created_at").eq("status", "pending"),
+      .select("id, report_type, created_at, listings(units(jalan, unit_no))", { count: "exact" })
+      .eq("status", "pending_review")
+      .order("created_at", newest)
+      .limit(QUEUE_LIMIT),
+    supabase
+      .from("unit_submissions")
+      .select("id, address, created_at", { count: "exact" })
+      .eq("status", "pending")
+      .order("created_at", newest)
+      .limit(QUEUE_LIMIT),
   ]);
 
   const errors = [available, ownerSearch, requests, reports, submissions]
@@ -77,20 +92,22 @@ export default async function HomePage() {
     .filter(Boolean);
 
   const today = todayInMalaysia();
-  const nowMs = Date.now();
+  const now = nowMs();
   const availableRows = available.data ?? [];
   const agingCount = availableRows.filter((l) =>
     isAging(l.last_verified_date, l.created_at, today),
   ).length;
-  const openTasks = (ownerSearch.data ?? []).filter((t) =>
-    isOwnerSearchTaskOpen(t.status as OwnerSearchTaskStatus),
-  );
+  const openTasks = ownerSearch.data ?? [];
   const requestRows = requests.data ?? [];
   const reportRows = reports.data ?? [];
   const submissionRows = submissions.data ?? [];
 
-  const needYou =
-    openTasks.length + requestRows.length + reportRows.length + submissionRows.length + agingCount;
+  const availableCount = available.count ?? 0;
+  const ownerSearchCount = ownerSearch.count ?? 0;
+  const requestCount = requests.count ?? 0;
+  const reportCount = reports.count ?? 0;
+  const submissionCount = submissions.count ?? 0;
+  const needYou = ownerSearchCount + requestCount + reportCount + submissionCount + agingCount;
 
   const queue: QueueItem[] = [
     ...requestRows.map((r) => ({
@@ -98,7 +115,7 @@ export default async function HomePage() {
       createdAt: r.created_at,
       // @ts-expect-error -- Supabase nested select typing
       label: unitLabel(r.listings?.units),
-      note: `${contactRequestReasonLabel(r.reason as ContactRequestReason)} · ${timeAgo(r.created_at, nowMs)}`,
+      note: `${contactRequestReasonLabel(r.reason as ContactRequestReason)} · ${timeAgo(r.created_at, now)}`,
       href: `/contact-requests/${r.id}`,
       action: "Review",
     })),
@@ -107,7 +124,7 @@ export default async function HomePage() {
       createdAt: r.created_at,
       // @ts-expect-error -- Supabase nested select typing
       label: unitLabel(r.listings?.units),
-      note: `${statusReportTypeLabel(r.report_type as StatusReportType)} · ${timeAgo(r.created_at, nowMs)}`,
+      note: `${statusReportTypeLabel(r.report_type as StatusReportType)} · ${timeAgo(r.created_at, now)}`,
       href: `/status-reports/${r.id}`,
       action: "Review",
     })),
@@ -115,7 +132,7 @@ export default async function HomePage() {
       key: `us-${s.id}`,
       createdAt: s.created_at,
       label: s.address,
-      note: `New unit submission · ${timeAgo(s.created_at, nowMs)}`,
+      note: `New unit submission · ${timeAgo(s.created_at, now)}`,
       href: `/unit-submissions/${s.id}`,
       action: "Review",
     })),
@@ -124,7 +141,7 @@ export default async function HomePage() {
       createdAt: t.created_at,
       // @ts-expect-error -- Supabase nested select typing
       label: unitLabel(t.units),
-      note: `Owner search · ${timeAgo(t.created_at, nowMs)}`,
+      note: `Owner search · ${timeAgo(t.created_at, now)}`,
       href: `/owner-search/${t.id}`,
       action: "Open",
     })),
@@ -142,15 +159,15 @@ export default async function HomePage() {
 
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Good morning, {firstName}</h1>
-        <p className="text-slate-600">{needYou} items need you today</p>
+        <p className="text-slate-600">{needYou} {needYou === 1 ? "item needs" : "items need"} you today.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3">
-        <StatTile label="Available" value={availableRows.length} href="/listings" />
-        <StatTile label="Owner search" value={openTasks.length} href="/owner-search" tone="accent" />
-        <StatTile label="Requests" value={requestRows.length} href="/contact-requests" tone="accent" />
-        <StatTile label="Reports" value={reportRows.length} href="/status-reports" tone="accent" />
-        <StatTile label="Submissions" value={submissionRows.length} href="/unit-submissions" tone="accent" />
+        <StatTile label="Available" value={availableCount} href="/listings" />
+        <StatTile label="Owner search" value={ownerSearchCount} href="/owner-search" tone="accent" />
+        <StatTile label="Requests" value={requestCount} href="/contact-requests" tone="accent" />
+        <StatTile label="Reports" value={reportCount} href="/status-reports" tone="accent" />
+        <StatTile label="Submissions" value={submissionCount} href="/unit-submissions" tone="accent" />
         <StatTile label="Aging 45d+" value={agingCount} href="/listings" tone="warn" />
       </div>
 

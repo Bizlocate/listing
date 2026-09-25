@@ -28,6 +28,11 @@ describe("isAging", () => {
     expect(isAging(null, "2026-01-01T10:00:00Z", "2026-02-14")).toBe(false);
     expect(isAging(null, "2026-01-01T10:00:00Z", "2026-02-15")).toBe(true);
   });
+  it("derives the createdAt date in Malaysia time, not UTC", () => {
+    // 2026-01-01T20:00Z is 2026-01-02 in MYT: 44 days to 02-15 (UTC slice would say 45)
+    expect(isAging(null, "2026-01-01T20:00:00Z", "2026-02-15")).toBe(false);
+    expect(isAging(null, "2026-01-01T20:00:00Z", "2026-02-16")).toBe(true);
+  });
   it("prefers lastVerifiedDate over createdAt", () => {
     expect(isAging("2026-02-10", "2025-01-01T00:00:00Z", "2026-02-15")).toBe(false);
   });

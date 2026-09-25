@@ -10,7 +10,9 @@ export function isAging(
   today: string,
   days = 45,
 ): boolean {
-  const reference = lastVerifiedDate ?? createdAt.slice(0, 10);
+  const reference =
+    lastVerifiedDate ??
+    new Date(createdAt).toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
   return daysBetween(reference, today) >= days;
 }
 
@@ -20,3 +22,5 @@ export function timeAgo(iso: string, nowMs: number): string {
   if (minutes < 1440) return `${Math.floor(minutes / 60)}h`;
   return `${Math.floor(minutes / 1440)}d`;
 }
+
+export const nowMs = (): number => Date.now();
