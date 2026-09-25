@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 
-const TABS = ["overview", "spaces", "owner", "listings"] as const;
+const TABS = ["overview", "spaces", "owner", "listings", "timeline"] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABELS: Record<Tab, string> = {
   overview: "Overview",
   spaces: "Spaces",
   owner: "Owner",
   listings: "Listings",
+  timeline: "Timeline",
 };
 
 export function UnitDetailTabs({
@@ -16,16 +17,18 @@ export function UnitDetailTabs({
   spaces,
   owner,
   listings,
+  timeline,
   initialTab = "overview",
 }: {
   overview: React.ReactNode;
   spaces: React.ReactNode;
   owner: React.ReactNode;
   listings: React.ReactNode;
+  timeline: React.ReactNode;
   initialTab?: Tab;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
-  const panels: Record<Tab, React.ReactNode> = { overview, spaces, owner, listings };
+  const panels: Record<Tab, React.ReactNode> = { overview, spaces, owner, listings, timeline };
 
   return (
     <div className="rounded-2xl border border-sky-100 bg-white shadow-sm">

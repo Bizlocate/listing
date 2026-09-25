@@ -10,6 +10,7 @@ import {
   type ListingStatus,
   type ListingType,
 } from "@/lib/listings/status-labels";
+import { describeActivity } from "@/lib/activity/describe";
 import { Badge } from "@/components/badge";
 import { UnitDetailTabs } from "@/components/unit-detail-tabs";
 import { createUnitSpace, createOwnerForUnit } from "./actions";
@@ -46,10 +47,12 @@ export default async function UnitDetailPage({
   const { unitId } = await params;
   const { error, space_created, owner_added, listing_created, tab } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] : undefined;
-  const initialTab: "overview" | "spaces" | "owner" | "listings" =
+  const initialTab: "overview" | "spaces" | "owner" | "listings" | "timeline" =
     tab === "owner"
       ? "owner"
-      : listing_created
+      : tab === "timeline"
+        ? "timeline"
+        : listing_created
         ? "listings"
         : owner_added || error === "owner_create_failed" || error === "ownership_link_failed"
           ? "owner"
@@ -98,6 +101,32 @@ export default async function UnitDetailPage({
     .select("id, listing_type, asking_rental, listing_status, unit_spaces(floor_label)")
     .eq("unit_id", unitId)
     .order("created_at", { ascending: false });
+
+  const { data: activities, error: activitiesError } = await supabase
+    .from("activities")
+    .select("id, action, detail, created_at, profiles(full_name)")
+    .eq("unit_id", unitId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const timelineContent = (
+    <div>
+      {activitiesError ? <p className="text-sm text-red-600">Could not load timeline: {activitiesError.message}</p> : null}
+      <ol className="space-y-3">
+        {(activities ?? []).map((a) => (
+          <li key={a.id} className="border-b border-sky-100 pb-3 last:border-0">
+            <p className="font-semibold text-slate-900">{describeActivity(a.action, a.detail)}</p>
+            <p className="text-sm text-slate-600">
+              {/* @ts-expect-error -- Supabase nested select typing */}
+              {a.profiles?.full_name ?? "System"} ·{" "}
+              {new Date(a.created_at).toLocaleString("en-MY", { timeZone: "Asia/Kuala_Lumpur" })}
+            </p>
+          </li>
+        ))}
+      </ol>
+      {(activities ?? []).length === 0 ? <p className="text-sm text-slate-600">No activity yet.</p> : null}
+    </div>
+  );
 
   const overviewContent = (
     <>
@@ -362,6 +391,7 @@ export default async function UnitDetailPage({
         spaces={spacesContent}
         owner={ownerContent}
         listings={listingsContent}
+        timeline={timelineContent}
         initialTab={initialTab}
       />
     </div>
