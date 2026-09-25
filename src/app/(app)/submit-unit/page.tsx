@@ -3,6 +3,7 @@ import { getCurrentProfile } from "@/lib/auth/get-current-profile";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/badge";
 import { GeolocationFields } from "@/components/geolocation-fields";
+import { SubmissionPhotoField } from "@/components/unit-media-uploaders";
 import { findDuplicateCandidates } from "@/lib/units/duplicate-detection";
 import { createUnitSubmission } from "./actions";
 
@@ -138,6 +139,7 @@ export default async function SubmitUnitPage({
           </label>
           <textarea id="remarks" name="remarks" className={FIELD_CLASSES} rows={3} />
         </div>
+        <SubmissionPhotoField userId={profile.id} />
         <button
           type="submit"
           className="w-full rounded-md bg-sky-600 px-4 py-2 text-base font-medium text-white hover:bg-sky-700"

@@ -20,6 +20,9 @@ export async function createUnitSubmission(formData: FormData) {
   const latRaw = String(formData.get("lat") ?? "");
   const lngRaw = String(formData.get("lng") ?? "");
 
+  const photoPathRaw = String(formData.get("photoPath") ?? "");
+  const photoPath = photoPathRaw.startsWith(`${actor.id}/`) && !photoPathRaw.includes("..") ?photoPathRaw : null;
+
   const supabase = await createClient();
 
   const { data: subArea } = await supabase
@@ -40,6 +43,7 @@ export async function createUnitSubmission(formData: FormData) {
     discovery_type: discoveryType,
     banner_phone: bannerPhone || null,
     remarks: remarks || null,
+    photo_url: photoPath,
   });
 
   if (error) {

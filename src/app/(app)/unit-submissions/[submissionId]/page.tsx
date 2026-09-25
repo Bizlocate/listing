@@ -35,13 +35,23 @@ export default async function UnitSubmissionDetailPage({
   const { data: submission } = await supabase
     .from("unit_submissions")
     .select(
-      "id, sub_area_id, jalan, unit_no, address, discovery_type, banner_phone, remarks, status, sub_areas(name, areas(name))",
+      "id, sub_area_id, jalan, unit_no, address, discovery_type, banner_phone, remarks, status, photo_url, sub_areas(name, areas(name))",
     )
     .eq("id", submissionId)
     .single();
 
   if (!submission) {
     notFound();
+  }
+
+  let photoSignedUrl: string | null = null;
+  let photoError: string | null = null;
+  if (submission.photo_url) {
+    const { data: signed, error: signError } = await supabase.storage
+      .from("submission-photos")
+      .createSignedUrl(submission.photo_url, 3600);
+    if (signError) photoError = signError.message;
+    photoSignedUrl = signed?.signedUrl ?? null;
   }
 
   let candidates: {
@@ -96,6 +106,15 @@ export default async function UnitSubmissionDetailPage({
           {submission.banner_phone ? ` · Banner phone: ${submission.banner_phone}` : ""}
         </p>
         {submission.remarks ? <p className="mt-1 text-sm text-slate-600">{submission.remarks}</p> : null}
+        {photoError ? <p className="mt-2 text-sm text-red-600">Could not load photo: {photoError}</p> : null}
+        {photoSignedUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photoSignedUrl}
+            alt="Submitted unit"
+            className="mt-3 max-h-72 w-full rounded-lg object-cover"
+          />
+        ) : null}
       </div>
 
       {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}

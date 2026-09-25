@@ -56,3 +56,22 @@ export function UnitDocumentUploader({ unitId }: { unitId: string }) {
     </div>
   );
 }
+
+export function SubmissionPhotoField({ userId }: { userId: string }) {
+  const [path, setPath] = useState("");
+  return (
+    <div>
+      <input type="hidden" name="photoPath" value={path} />
+      <FileUploader
+        bucket="submission-photos"
+        prefix={userId}
+        kind="photo"
+        label={path ? "Replace photo" : "Add photo"}
+        onUploaded={async (uploaded) => {
+          setPath(uploaded);
+        }}
+      />
+      {path ? <p className="mt-1 text-sm text-sky-700">Photo attached.</p> : null}
+    </div>
+  );
+}

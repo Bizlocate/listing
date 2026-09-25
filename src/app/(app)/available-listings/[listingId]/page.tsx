@@ -41,13 +41,38 @@ export default async function AvailableListingDetailPage({
   const { data: listing } = await supabase
     .from("available_listings")
     .select(
-      "id, jalan, unit_no, unit_code, full_address, sub_area_name, area_name, floor_label, asking_rental, remarks",
+      "id, unit_id, jalan, unit_no, unit_code, full_address, sub_area_name, area_name, floor_label, asking_rental, remarks",
     )
     .eq("id", listingId)
     .single();
 
   if (!listing) {
     notFound();
+  }
+
+  // Photos only (bucket unit-photos): no documents on this SP-facing page. Cover first, max 6.
+  const { data: photoRows, error: photosError } = await supabase
+    .from("unit_photos")
+    .select("id, url, photo_type")
+    .eq("unit_id", listing.unit_id)
+    .order("created_at", { ascending: false });
+  const photos = (photoRows ?? [])
+    .sort((a, b) => Number(b.photo_type === "cover") - Number(a.photo_type === "cover"))
+    .slice(0, 6);
+
+  const photoUrls = new Map<string, string>();
+  let photoUrlsError: string | null = null;
+  if (photos.length > 0) {
+    const { data: signed, error: signError } = await supabase.storage
+      .from("unit-photos")
+      .createSignedUrls(
+        photos.map((p) => p.url),
+        3600,
+      );
+    if (signError) photoUrlsError = signError.message;
+    for (const s of signed ?? []) {
+      if (s.path && s.signedUrl) photoUrls.set(s.path, s.signedUrl);
+    }
   }
 
   const { data: latestRequest } = await supabase
@@ -81,6 +106,24 @@ export default async function AvailableListingDetailPage({
           {listing.asking_rental ? `RM ${Number(listing.asking_rental).toLocaleString()} / month` : "—"}
         </p>
       </div>
+
+      {photosError ? <p className="text-sm text-red-600">Could not load photos: {photosError.message}</p> : null}
+      {photoUrlsError ? <p className="text-sm text-red-600">Could not load photo images: {photoUrlsError}</p> : null}
+      {photos.length > 0 ? (
+        <div className="flex gap-3 overflow-x-auto pb-1">
+          {photos.map((p) =>
+            photoUrls.get(p.url) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={p.id}
+                src={photoUrls.get(p.url)}
+                alt={`${p.photo_type} photo of ${listing.unit_code}`}
+                className="h-40 w-auto shrink-0 rounded-lg object-cover"
+              />
+            ) : null,
+          )}
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
