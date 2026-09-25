@@ -111,10 +111,15 @@ export function AppShell({
               ☰
             </button>
           ) : null}
-          <input
-            className="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none"
-            placeholder="Search units or listings"
-          />
+          <form action="/search" method="get" role="search" className="flex min-w-0 flex-1 md:flex-none">
+            <input
+              name="q"
+              type="search"
+              aria-label="Search units or listings"
+              className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none md:w-72 md:flex-none"
+              placeholder="Search units or listings"
+            />
+          </form>
           <div className="ml-auto flex items-center gap-3">
             <div className="text-sm leading-tight">
               <p className="font-semibold text-slate-900">{fullName}</p>
