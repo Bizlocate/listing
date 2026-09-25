@@ -22,3 +22,20 @@ create policy "profiles_update_self" on public.profiles for update
     and role = public.current_role()
     and status = public.current_status()
   );
+
+-- Same class of hole, found in the 0009 review:
+-- 1. profiles_insert_self only checked id = auth.uid(), so an auth user with no
+--    profile row could insert one with role = 'super_admin'. Nothing in the app
+--    uses this policy (handle_new_user and the service-role client bypass RLS).
+drop policy "profiles_insert_self" on public.profiles;
+
+-- 2. unit_submissions_insert_self only checked submitted_by, so an SP could insert
+--    a submission already 'linked'/'converted' with any matched_unit_id (skipping the
+--    admin queue and writing onto any unit's timeline). Same pattern as 0007.
+drop policy "unit_submissions_insert_self" on public.unit_submissions;
+create policy "unit_submissions_insert_self" on public.unit_submissions for insert
+  with check (
+    submitted_by = auth.uid()
+    and status = 'pending'
+    and matched_unit_id is null
+  );
