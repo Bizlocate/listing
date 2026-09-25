@@ -7,6 +7,12 @@ import { createClient } from "@/lib/supabase/server";
 
 const PHOTO_TYPES = ["cover", "property", "banner"];
 const DOC_TYPES = ["ic", "hakmilik", "other"];
+const UUID = /^[0-9a-fA-F-]{36}$/;
+
+// Path must be exactly <unitId>/<uuid>.<ext> (as built by buildStoragePath); rejects ../ tricks.
+function isValidPath(unitId: string, path: string) {
+  return UUID.test(unitId) && new RegExp(`^${unitId}/[0-9a-fA-F-]{36}\\.[a-z0-9]{1,5}$`).test(path);
+}
 
 async function requireAdmin() {
   const actor = await getCurrentProfile();
@@ -18,7 +24,7 @@ async function requireAdmin() {
 
 export async function recordUnitPhoto(unitId: string, path: string, photoType: string): Promise<{ error?: string }> {
   const actor = await requireAdmin();
-  if (!path.startsWith(`${unitId}/`) || !PHOTO_TYPES.includes(photoType)) {
+  if (!isValidPath(unitId, path) || !PHOTO_TYPES.includes(photoType)) {
     return { error: "Invalid upload." };
   }
   const supabase = await createClient();
@@ -32,7 +38,7 @@ export async function recordUnitPhoto(unitId: string, path: string, photoType: s
 
 export async function recordUnitDocument(unitId: string, path: string, docType: string): Promise<{ error?: string }> {
   const actor = await requireAdmin();
-  if (!path.startsWith(`${unitId}/`) || !DOC_TYPES.includes(docType)) {
+  if (!isValidPath(unitId, path) || !DOC_TYPES.includes(docType)) {
     return { error: "Invalid upload." };
   }
   const supabase = await createClient();
@@ -44,40 +50,41 @@ export async function recordUnitDocument(unitId: string, path: string, docType: 
   return {};
 }
 
-export async function deleteUnitPhoto(formData: FormData) {
+// Storage object first, then the row: a failure leaves the row visible so the delete can be retried.
+async function deleteMedia(
+  formData: FormData,
+  table: "unit_photos" | "unit_documents",
+  idField: string,
+  bucket: string,
+) {
   await requireAdmin();
   const unitId = String(formData.get("unitId"));
-  const photoId = String(formData.get("photoId"));
+  const id = String(formData.get(idField));
+  const back = `/units/${unitId}`;
+  const failed = `${back}?error=delete_failed`;
   const supabase = await createClient();
 
-  const { data: row } = await supabase
-    .from("unit_photos")
-    .delete()
-    .eq("id", photoId)
-    .eq("unit_id", unitId)
+  const { data: row, error: selectError } = await supabase
+    .from(table)
     .select("url")
+    .eq("id", id)
+    .eq("unit_id", unitId)
     .maybeSingle();
-  if (row) {
-    await supabase.storage.from("unit-photos").remove([row.url]);
-  }
-  redirect(`/units/${unitId}`);
+  if (selectError) redirect(failed);
+  if (!row) redirect(back);
+
+  const { error: removeError } = await supabase.storage.from(bucket).remove([row.url]);
+  if (removeError) redirect(failed);
+
+  const { error: deleteError } = await supabase.from(table).delete().eq("id", id).eq("unit_id", unitId);
+  if (deleteError) redirect(failed);
+  redirect(back);
+}
+
+export async function deleteUnitPhoto(formData: FormData) {
+  await deleteMedia(formData, "unit_photos", "photoId", "unit-photos");
 }
 
 export async function deleteUnitDocument(formData: FormData) {
-  await requireAdmin();
-  const unitId = String(formData.get("unitId"));
-  const documentId = String(formData.get("documentId"));
-  const supabase = await createClient();
-
-  const { data: row } = await supabase
-    .from("unit_documents")
-    .delete()
-    .eq("id", documentId)
-    .eq("unit_id", unitId)
-    .select("url")
-    .maybeSingle();
-  if (row) {
-    await supabase.storage.from("unit-documents").remove([row.url]);
-  }
-  redirect(`/units/${unitId}`);
+  await deleteMedia(formData, "unit_documents", "documentId", "unit-documents");
 }
