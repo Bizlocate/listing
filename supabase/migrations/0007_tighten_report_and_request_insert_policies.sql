@@ -2,7 +2,7 @@
 --
 -- The insert policies for `listing_status_reports` and `contact_requests` in
 -- 0001 only checked ownership (`reported_by` / `requested_by = auth.uid()`).
--- A service provider calling PostgREST directly could therefore insert a row
+-- A salesperson calling PostgREST directly could therefore insert a row
 -- that is already `confirmed` / `approved`, or with a forged `reviewed_by` /
 -- `approved_by`, polluting the admin audit trail. Require the row to start in
 -- its initial state with no reviewer set; only the admin update policies can
