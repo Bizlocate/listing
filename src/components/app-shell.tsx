@@ -42,15 +42,25 @@ export function AppShell({
   signOutAction: () => Promise<void>;
   children: React.ReactNode;
 }) {
-  const [navOpen, setNavOpen] = useState(true);
   const pathname = usePathname();
+  // mobileOpen is keyed to the pathname it was opened on, so navigating closes the drawer without an effect.
+  const [openedAt, setOpenedAt] = useState<string | null>(null);
+  const mobileOpen = openedAt === pathname;
+  const [desktopHidden, setDesktopHidden] = useState(false);
+  const closeMobile = () => setOpenedAt(null);
   const showAdminNav = canAccessAdminTools(role);
   const showUsersAreasNav = canManageUsers(role);
 
   return (
     <div className="flex min-h-screen items-stretch bg-sky-50">
-      {navOpen ? (
-        <nav className="sticky top-0 flex h-screen w-60 flex-none flex-col overflow-auto border-r border-sky-100 bg-white pb-6">
+      {mobileOpen ? (
+        <div className="fixed inset-0 z-20 bg-slate-900/40 md:hidden" onClick={closeMobile} />
+      ) : null}
+      <nav
+        className={`fixed inset-y-0 left-0 z-30 flex w-60 flex-none flex-col overflow-auto border-r border-sky-100 bg-white pb-6 transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        } ${desktopHidden ? "md:hidden" : ""}`}
+      >
           <div className="flex items-center gap-2 px-4 pb-3 pt-5">
             <div className="grid h-8 w-8 place-items-center rounded-lg bg-sky-600 text-sm font-extrabold text-white">
               B
@@ -58,7 +68,10 @@ export function AppShell({
             <div className="mr-auto text-base font-extrabold text-slate-900">Bizlocate</div>
             <button
               type="button"
-              onClick={() => setNavOpen(false)}
+              onClick={() => {
+                closeMobile();
+                setDesktopHidden(true);
+              }}
               title="Hide menu"
               className="rounded p-1 text-slate-500 hover:bg-sky-50"
             >
@@ -70,17 +83,17 @@ export function AppShell({
               Admin
             </div>
           ) : null}
-          <NavLink href={DASHBOARD_NAV.href} active={pathname === DASHBOARD_NAV.href}>
+          <NavLink onNavigate={closeMobile} href={DASHBOARD_NAV.href} active={pathname === DASHBOARD_NAV.href}>
             {DASHBOARD_NAV.label}
           </NavLink>
           {GENERAL_NAV.map((item) => (
-            <NavLink key={item.href} href={item.href} active={pathname === item.href}>
+            <NavLink onNavigate={closeMobile} key={item.href} href={item.href} active={pathname === item.href}>
               {item.label}
             </NavLink>
           ))}
           {showAdminNav
             ? ADMIN_NAV.map((item) => (
-                <NavLink key={item.href} href={item.href} active={pathname === item.href}>
+                <NavLink onNavigate={closeMobile} key={item.href} href={item.href} active={pathname === item.href}>
                   {item.label}
                 </NavLink>
               ))
@@ -91,22 +104,30 @@ export function AppShell({
                 Users &amp; areas
               </div>
               {USERS_AREAS_NAV.map((item) => (
-                <NavLink key={item.href} href={item.href} active={pathname.startsWith(item.href)}>
+                <NavLink onNavigate={closeMobile} key={item.href} href={item.href} active={pathname.startsWith(item.href)}>
                   {item.label}
                 </NavLink>
               ))}
             </>
           ) : null}
-        </nav>
-      ) : null}
+      </nav>
 
       <div className="min-w-0 flex-1">
-        <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-sky-100 bg-white px-6 py-3">
-          {!navOpen ? (
+        <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-sky-100 bg-white px-3 py-3 md:gap-4 md:px-6">
+          <button
+            type="button"
+            onClick={() => setOpenedAt(pathname)}
+            aria-label="Open menu"
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 md:hidden"
+          >
+            ☰
+          </button>
+          {desktopHidden ? (
             <button
               type="button"
-              onClick={() => setNavOpen(true)}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              onClick={() => setDesktopHidden(false)}
+              aria-label="Show menu"
+              className="hidden rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 md:block"
             >
               ☰
             </button>
@@ -120,10 +141,10 @@ export function AppShell({
               placeholder="Search units or listings"
             />
           </form>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex flex-none items-center gap-2 md:gap-3">
             <div className="text-sm leading-tight">
-              <p className="font-semibold text-slate-900">{fullName}</p>
-              <p className="text-slate-600">{roleLabel}</p>
+              <p className="max-w-[8rem] truncate font-semibold text-slate-900">{fullName}</p>
+              <p className="hidden text-slate-600 sm:block">{roleLabel}</p>
             </div>
             <form action={signOutAction}>
               <button
@@ -135,7 +156,7 @@ export function AppShell({
             </form>
           </div>
         </div>
-        <main className="p-6">{children}</main>
+        <main className="p-4 md:p-6">{children}</main>
       </div>
     </div>
   );
@@ -144,15 +165,18 @@ export function AppShell({
 function NavLink({
   href,
   active,
+  onNavigate,
   children,
 }: {
   href: string;
   active: boolean;
+  onNavigate: () => void;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       className={`mx-2 my-0.5 rounded-full px-3.5 py-2 text-sm ${
         active ? "bg-sky-100 font-semibold text-sky-800" : "text-slate-900 hover:bg-sky-50"
       }`}
