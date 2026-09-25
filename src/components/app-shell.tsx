@@ -19,6 +19,7 @@ const ADMIN_NAV = [
   { href: "/unit-submissions", label: "Unit submissions" },
   { href: "/listings", label: "Listings" },
   { href: "/contact-requests", label: "Contact requests" },
+  { href: "/status-reports", label: "Status reports" },
   { href: "/verification", label: "Verification" },
 ];
 
